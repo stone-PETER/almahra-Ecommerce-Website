@@ -22,7 +22,14 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     cors.init_app(app, 
-                  origins=["http://localhost:3000", "http://localhost:5173"],
+                  origins=[
+                      "http://localhost:3000", 
+                      "http://localhost:5173",
+                      "http://localhost:4173",  # Vite preview
+                      "https://*.vercel.app",  # Vercel deployments
+                      "https://*.netlify.app",  # Netlify deployments
+                      "*"  # Allow all origins (remove this in production after setting up proper domain)
+                  ],
                   supports_credentials=True,
                   allow_headers=["Content-Type", "Authorization"],
                   methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
