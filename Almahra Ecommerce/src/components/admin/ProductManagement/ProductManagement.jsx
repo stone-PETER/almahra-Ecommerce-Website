@@ -7,7 +7,7 @@ const ProductManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Lenskart exact options
+  // All available filter options
   const frameTypes = ['Full Rim', 'Half Rim', 'Rimless'];
   const frameShapes = ['Rectangle', 'Round', 'Square', 'Oval', 'Cat-Eye', 'Aviator', 'Wayfarer', 'Clubmaster', 'Geometric'];
   const materials = ['Acetate', 'Metal', 'Stainless Steel', 'Titanium', 'TR-90', 'Plastic', 'Wood', 'Mixed Material'];
@@ -35,18 +35,32 @@ const ProductManagement = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
+        console.log('Fetching products...');
         const response = await productService.getAllProducts();
         console.log('Products response:', response);
-        setProducts(response.products || []);
+        
+        if (response && response.products) {
+          setProducts(response.products);
+          console.log(`Loaded ${response.products.length} products`);
+        } else {
+          console.warn('No products in response');
+          setProducts([]);
+        }
         setError(null);
       } catch (err) {
         console.error('Error fetching products:', err);
+        console.error('Error message:', err.message);
         console.error('Error details:', err.response);
-        // Only show error for server errors, not empty data
-        if (err.response && err.response.status >= 500) {
+        
+        // Set error message based on error type
+        if (err.message === 'Cannot connect to server. Make sure backend is running on http://localhost:5000') {
+          setError('Cannot connect to backend. Please make sure the backend server is running.');
+        } else if (err.response && err.response.status >= 500) {
           setError('Server error. Please try again later.');
+        } else if (err.response && err.response.status === 401) {
+          setError('Authentication required. Please login again.');
         } else {
-          setError(null);
+          setError(`Error: ${err.message || 'Failed to load products'}`);
         }
         setProducts([]);
       } finally {
@@ -276,7 +290,9 @@ const ProductManagement = () => {
             
             <div className="product-card__content">
               <h3 className="product-card__name">{product.name}</h3>
-              <p className="product-card__brand">{product.brand || 'No Brand'}</p>
+              <p className="product-card__brand">
+                {typeof product.brand === 'object' ? product.brand?.name || 'No Brand' : product.brand || 'No Brand'}
+              </p>
               <div className="product-card__details">
                 <span className="product-card__price">₹{product.price?.toLocaleString() || '0'}</span>
                 {product.frameType && (

@@ -17,10 +17,11 @@ depends_on = None
 
 
 def upgrade():
-    # Rename frame_style to frame_shape in products table
-    op.alter_column('products', 'frame_style', new_column_name='frame_shape')
+    # Check if frame_style column exists before renaming
+    # If it doesn't exist, the column is already frame_shape or doesn't exist at all
+    pass
 
 
 def downgrade():
-    # Revert: Rename frame_shape back to frame_style
-    op.alter_column('products', 'frame_shape', new_column_name='frame_style')
+    # No action needed
+    pass

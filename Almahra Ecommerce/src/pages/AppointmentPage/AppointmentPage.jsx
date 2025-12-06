@@ -51,21 +51,54 @@ const AppointmentPage = () => {
   };
 
   const handleConfirm = async () => {
-    // Save appointment
-    const savedAppointment = addAppointment(appointmentData);
-    console.log('Appointment Confirmed:', savedAppointment);
-    
-    // Send confirmation email
-    await emailService.sendAppointmentConfirmation(
-      savedAppointment, 
-      savedAppointment.personalInfo.email
-    );
-    
-    // Show success message
-    alert('Appointment booked successfully! A confirmation email has been sent to your email address.');
-    
-    // Redirect to profile page
-    navigate('/profile');
+    try {
+      // Map frontend appointment type to backend enum values
+      const typeMapping = {
+        'Eye Test': 'eye_exam',
+        'Consultation': 'consultation',
+        'Lens Fitting': 'contact_lens',
+        'Frame Selection': 'frame_fitting'
+      };
+
+      // Prepare appointment data for backend
+      const appointmentPayload = {
+        appointmentType: typeMapping[appointmentData.type] || 'consultation',
+        date: appointmentData.date,
+        timeSlot: appointmentData.time,
+        notes: appointmentData.personalInfo.notes || '',
+        personalInfo: {
+          name: `${appointmentData.personalInfo.firstName} ${appointmentData.personalInfo.lastName}`,
+          email: appointmentData.personalInfo.email,
+          phone: `${appointmentData.personalInfo.countryCode}${appointmentData.personalInfo.phone}`
+        }
+      };
+
+      console.log('AppointmentPage - Sending payload:', appointmentPayload);
+
+      // Save appointment to backend
+      const savedAppointment = await addAppointment(appointmentPayload);
+      console.log('Appointment Confirmed:', savedAppointment);
+      
+      // Try to send confirmation email, but don't fail if it doesn't work
+      try {
+        await emailService.sendAppointmentConfirmation(
+          savedAppointment, 
+          appointmentData.personalInfo.email
+        );
+      } catch (emailError) {
+        console.warn('Failed to send confirmation email:', emailError);
+      }
+      
+      // Show success message
+      alert('Appointment booked successfully! A confirmation email has been sent to your email address.');
+      
+      // Redirect based on authentication status
+      // Only authenticated users can view appointments in profile
+      navigate('/');
+    } catch (error) {
+      console.error('Failed to book appointment:', error);
+      alert('Failed to book appointment. Please try again.');
+    }
   };
 
   return (

@@ -19,16 +19,29 @@ def admin_required(f):
     @wraps(f)
     @jwt_required()
     def decorated(*args, **kwargs):
-        current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
-        
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        if user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
-            return jsonify({'error': 'Admin access required'}), 403
-        
-        return f(*args, **kwargs)
+        try:
+            current_user_id = get_jwt_identity()
+            current_app.logger.info(f"Admin required - User ID from token: {current_user_id}")
+            
+            # Convert string ID to int for database query
+            user_id = int(current_user_id) if isinstance(current_user_id, str) and current_user_id.isdigit() else current_user_id
+            user = User.query.get(user_id)
+            
+            if not user:
+                current_app.logger.error(f"User not found for ID: {current_user_id}")
+                return jsonify({'error': 'User not found'}), 404
+            
+            current_app.logger.info(f"User found: {user.email}, Role: {user.role}")
+            
+            if user.role not in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
+                current_app.logger.warning(f"Access denied - User {user.email} is not admin")
+                return jsonify({'error': 'Admin access required'}), 403
+            
+            current_app.logger.info(f"Admin check passed, calling function: {f.__name__}")
+            return f(*args, **kwargs)
+        except Exception as e:
+            current_app.logger.error(f"Admin auth error: {str(e)}")
+            raise
     return decorated
 
 def super_admin_required(f):
@@ -37,7 +50,9 @@ def super_admin_required(f):
     @jwt_required()
     def decorated(*args, **kwargs):
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        # Convert string ID to int for database query
+        user_id = int(current_user_id) if isinstance(current_user_id, str) and current_user_id.isdigit() else current_user_id
+        user = User.query.get(user_id)
         
         if not user:
             return jsonify({'error': 'User not found'}), 404

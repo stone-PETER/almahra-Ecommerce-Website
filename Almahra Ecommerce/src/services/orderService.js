@@ -1,22 +1,37 @@
 import api from './api';
 
 const orderService = {
-  // Create new order from cart (Cash on Delivery)
+  // Create new order from cart
   createOrder: async (orderData) => {
     try {
-      const response = await api.post('/orders', {
-        shipping_address_id: orderData.shippingAddressId,
-        billing_address_id: orderData.billingAddressId || orderData.shippingAddressId,
-        payment_method: 'cash_on_delivery',
-        notes: orderData.notes || '',
-      });
+      const response = await api.post('/orders', orderData);
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  // Get all user orders
+  // Get all user orders (for current logged-in user)
+  getUserOrders: async (params = {}) => {
+    try {
+      const response = await api.get('/orders', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get all orders (for admin)
+  getAllOrders: async (params = {}) => {
+    try {
+      const response = await api.get('/admin/orders', { params });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Alias for getUserOrders
   getOrders: async (params = {}) => {
     try {
       const response = await api.get('/orders', { params });
@@ -30,6 +45,16 @@ const orderService = {
   getOrderById: async (orderId) => {
     try {
       const response = await api.get(`/orders/${orderId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Update order status (admin only)
+  updateOrderStatus: async (orderId, status) => {
+    try {
+      const response = await api.put(`/admin/orders/${orderId}/status`, { status });
       return response.data;
     } catch (error) {
       throw error;

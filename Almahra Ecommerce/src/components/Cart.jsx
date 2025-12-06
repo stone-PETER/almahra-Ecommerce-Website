@@ -56,7 +56,7 @@ const Cart = () => {
               <div className="cart-item__details">
                 <div className="cart-item__info">
                   <h3 className="cart-item__name">{item.product.name}</h3>
-                  <p className="cart-item__brand">{item.product.brand}</p>
+                  <p className="cart-item__brand">{item.product.brand?.name || item.product.brand}</p>
 
                   {/* Variant Display */}
                   {item.variant && (
@@ -100,9 +100,13 @@ const Cart = () => {
                   {/* Price and Remove */}
                   <div className="cart-item__price-section">
                     <div className="cart-item__price">
-                      <span className="price-per-item">₹{item.price}</span>
+                      <span className="price-per-item">
+                        ₹{item.variant?.price || item.product?.price || 0}
+                      </span>
                       {item.quantity > 1 && (
-                        <span className="price-total">₹{(item.price * item.quantity).toFixed(2)}</span>
+                        <span className="price-total">
+                          ₹{((item.variant?.price || item.product?.price || 0) * item.quantity).toFixed(2)}
+                        </span>
                       )}
                     </div>
                     <button

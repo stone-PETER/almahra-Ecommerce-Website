@@ -3,6 +3,7 @@ import { useCart } from "../../context/CartContext.jsx";
 import { formatCurrency, validators } from "../../utils/helpers.js";
 import Button from "../../components/common/Button/Button.jsx";
 import PhoneInput from "../../components/common/PhoneInput/PhoneInput.jsx";
+import orderService from "../../services/orderService.js";
 import emailService from "../../services/emailService.js";
 import "./CheckoutPage.css";
 
@@ -76,14 +77,8 @@ const CheckoutPage = () => {
     }
 
     if (stepNumber === 2) {
-      // Validate payment information
-      if (!validators.required(formData.cardNumber))
-        newErrors.cardNumber = "Card number is required";
-      if (!validators.required(formData.expiryDate))
-        newErrors.expiryDate = "Expiry date is required";
-      if (!validators.required(formData.cvv)) newErrors.cvv = "CVV is required";
-      if (!validators.required(formData.cardholderName))
-        newErrors.cardholderName = "Cardholder name is required";
+      // Payment information is optional (for cash on delivery)
+      // No validation required
     }
 
     setErrors(newErrors);
@@ -105,40 +100,69 @@ const CheckoutPage = () => {
 
     setIsProcessing(true);
 
-    // Create order object
-    const order = {
-      id: 'ORD' + Date.now(),
-      date: new Date().toISOString(),
-      customerName: `${formData.firstName} ${formData.lastName}`,
-      email: formData.email,
-      items: items.map(item => ({
-        name: item.product.name,
-        quantity: item.quantity,
-        price: item.price
-      })),
-      total: total,
-      status: 'processing',
-      trackingNumber: 'TRACK' + Date.now(),
-      estimatedDelivery: '3-5 business days',
-      shippingAddress: {
-        address: formData.address,
-        city: formData.city,
-        state: formData.state,
-        zipCode: formData.zipCode,
-        country: formData.country
-      }
-    };
+    try {
+      // Create order via API
+      const orderPayload = {
+        shipping_address: {
+          address_line1: formData.address,
+          city: formData.city,
+          state: formData.state,
+          postal_code: formData.zipCode,
+          country: formData.country || 'India',
+        },
+        payment_method: formData.cardNumber ? 'card' : 'cash_on_delivery',
+        notes: `Customer: ${formData.firstName} ${formData.lastName}, Email: ${formData.email}, Phone: ${formData.phone || 'N/A'}`,
+        items: items.map(item => ({
+          id: item.product?.id || item.id,
+          product_id: item.product?.id || item.id,
+          name: item.product?.name || item.name,
+          sku: item.product?.sku || item.sku || '',
+          price: item.price || item.product?.price || 0,
+          quantity: item.quantity || 1,
+          variant_id: item.variant?.id || null,
+        })),
+      };
 
-    // Simulate order processing
-    setTimeout(async () => {
-      // Send order confirmation email
-      await emailService.sendOrderConfirmation(order, formData.email);
-      
-      // Clear cart before moving to confirmation step
+      // If card details provided, include them
+      if (formData.cardNumber) {
+        orderPayload.payment_details = {
+          card_number: formData.cardNumber,
+          expiry_date: formData.expiryDate,
+          cardholder_name: formData.cardholderName,
+        };
+      }
+
+      console.log('Creating order:', orderPayload);
+      const response = await orderService.createOrder(orderPayload);
+      console.log('Order created successfully:', response);
+
+      // Send confirmation email (optional - may fail if email service not configured)
+      try {
+        await emailService.sendOrderConfirmation({
+          id: response.order?.id || 'N/A',
+          customerName: `${formData.firstName} ${formData.lastName}`,
+          email: formData.email,
+          items: items.map(item => ({
+            name: item.product?.name || item.name,
+            quantity: item.quantity,
+            price: item.price || item.product?.price,
+          })),
+          total: total,
+        }, formData.email);
+      } catch (emailError) {
+        console.warn('Email notification failed:', emailError);
+        // Continue even if email fails
+      }
+
+      // Clear cart and move to confirmation
       clearCart();
       setIsProcessing(false);
       setStep(3);
-    }, 2000);
+    } catch (error) {
+      console.error('Order creation failed:', error);
+      setIsProcessing(false);
+      alert(`Failed to create order: ${error.response?.data?.error || error.message || 'Unknown error'}. Please try again.`);
+    }
   };
 
   if (items.length === 0 && step !== 3) {
@@ -341,7 +365,7 @@ const CheckoutPage = () => {
                 </h2>
                 <div className="form-grid">
                   <div className="form-group full-width">
-                    <label htmlFor="cardNumber">Card Number *</label>
+                    <label htmlFor="cardNumber">Card Number (Optional - for online payment)</label>
                     <input
                       type="text"
                       id="cardNumber"
@@ -357,7 +381,7 @@ const CheckoutPage = () => {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="expiryDate">Expiry Date *</label>
+                    <label htmlFor="expiryDate">Expiry Date</label>
                     <input
                       type="text"
                       id="expiryDate"
@@ -373,7 +397,7 @@ const CheckoutPage = () => {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="cvv">CVV *</label>
+                    <label htmlFor="cvv">CVV</label>
                     <input
                       type="text"
                       id="cvv"
@@ -389,7 +413,7 @@ const CheckoutPage = () => {
                   </div>
 
                   <div className="form-group full-width">
-                    <label htmlFor="cardholderName">Cardholder Name *</label>
+                    <label htmlFor="cardholderName">Cardholder Name</label>
                     <input
                       type="text"
                       id="cardholderName"

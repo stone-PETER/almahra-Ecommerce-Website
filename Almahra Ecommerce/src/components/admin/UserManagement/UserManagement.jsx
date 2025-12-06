@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import Button from '../../common/Button/Button.jsx';
 import adminService from '../../../services/adminService.js';
 import './UserManagement.css';
 
 const UserManagement = () => {
+  const { user: currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('all');
   const [users, setUsers] = useState([]);
@@ -57,16 +59,36 @@ const UserManagement = () => {
     return role === 'admin' ? 'role--admin' : 'role--customer';
   };
 
-  const handleEditUser = (userId) => {
-    console.log('Edit user:', userId);
-  };
-
-  const handleDeleteUser = (userId) => {
-    console.log('Delete user:', userId);
-  };
-
-  const handleToggleStatus = (userId) => {
-    console.log('Toggle status for user:', userId);
+  const handleDeleteUser = async (userId) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    
+    // Prevent deleting yourself
+    if (currentUser && currentUser.id === userId) {
+      alert('You cannot delete your own account while logged in.');
+      return;
+    }
+    
+    // Warn about deleting admin users
+    if (user.role === 'ADMIN' || user.role === 'admin') {
+      if (!window.confirm(`⚠️ WARNING: You are about to delete an ADMIN user (${user.email}). This will remove all their admin privileges. Are you absolutely sure?`)) {
+        return;
+      }
+    }
+    
+    // Final confirmation for any user deletion
+    if (!window.confirm(`Delete user "${user.fullName || user.email}"? This action cannot be undone and will remove all their data.`)) {
+      return;
+    }
+    
+    try {
+      // For now just log, as delete endpoint may not exist
+      console.log('Delete user:', userId);
+      alert('User deletion endpoint is not yet implemented in the backend. This feature will be available soon.');
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      alert('Failed to delete user: ' + (err.message || 'Unknown error'));
+    }
   };
 
   if (loading) {
@@ -150,9 +172,6 @@ const UserManagement = () => {
                 <span className={`role-badge ${getRoleClass(user.role)}`}>
                   {user.role}
                 </span>
-                <span className={`status-badge ${getStatusClass(user.isVerified ? 'active' : 'inactive')}`}>
-                  {user.isVerified ? 'verified' : 'unverified'}
-                </span>
               </div>
             </div>
 
@@ -181,25 +200,11 @@ const UserManagement = () => {
               <Button 
                 variant="secondary"
                 size="small"
-                onClick={() => handleEditUser(user.id)}
-              >
-                Edit
-              </Button>
-              <Button 
-                variant={user.status === 'active' ? 'secondary' : 'primary'}
-                size="small"
-                onClick={() => handleToggleStatus(user.id)}
-                className={user.status === 'active' ? 'btn--warning' : 'btn--success'}
-              >
-                {user.status === 'active' ? 'Deactivate' : 'Activate'}
-              </Button>
-              <Button 
-                variant="secondary"
-                size="small"
                 onClick={() => handleDeleteUser(user.id)}
                 className="btn--danger"
+                disabled={currentUser && currentUser.id === user.id}
               >
-                Delete
+                {currentUser && currentUser.id === user.id ? 'You' : 'Delete'}
               </Button>
             </div>
           </div>

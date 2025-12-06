@@ -45,7 +45,7 @@ const DashboardOverview = ({ setActiveTab }) => {
     {
       title: 'Total Sales',
       value: `₹${stats.totalSales.toLocaleString()}`,
-      change: '+12.5%',
+      change: null,
       trend: 'up',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -57,7 +57,7 @@ const DashboardOverview = ({ setActiveTab }) => {
     {
       title: 'Orders',
       value: stats.orders.toString(),
-      change: '+8.2%',
+      change: null,
       trend: 'up',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -69,7 +69,7 @@ const DashboardOverview = ({ setActiveTab }) => {
     {
       title: 'Products',
       value: stats.products.toString(),
-      change: '+3.1%',
+      change: null,
       trend: 'up',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -83,7 +83,7 @@ const DashboardOverview = ({ setActiveTab }) => {
     {
       title: 'Customers',
       value: stats.customers.toString(),
-      change: '+15.3%',
+      change: null,
       trend: 'up',
       icon: (
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -135,9 +135,11 @@ const DashboardOverview = ({ setActiveTab }) => {
               <div className="stat-card__icon">
                 {stat.icon}
               </div>
-              <div className={`stat-card__change ${stat.trend === 'up' ? 'stat-card__change--positive' : 'stat-card__change--negative'}`}>
-                {stat.change}
-              </div>
+              {stat.change && (
+                <div className={`stat-card__change ${stat.trend === 'up' ? 'stat-card__change--positive' : 'stat-card__change--negative'}`}>
+                  {stat.change}
+                </div>
+              )}
             </div>
             <div className="stat-card__content">
               <h3 className="stat-card__value">{stat.value}</h3>

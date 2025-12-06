@@ -5,9 +5,12 @@ import './MyAppointments.css';
 
 const MyAppointments = () => {
   const { user } = useAuth();
-  const { getUserAppointments, cancelAppointment } = useAppointments();
+  const { appointments, cancelAppointment } = useAppointments();
   
-  const userAppointments = user ? getUserAppointments(user.email) : [];
+  const userAppointments = Array.isArray(appointments) ? appointments : [];
+  
+  console.log('MyAppointments - appointments:', appointments);
+  console.log('MyAppointments - userAppointments:', userAppointments);
 
   const locations = [
     { id: 'downtown', name: 'Downtown Branch', address: '123 Main Street, City Center' },
@@ -77,8 +80,7 @@ const MyAppointments = () => {
           <div key={appointment.id} className={`appointment-card ${appointment.status === 'cancelled' ? 'appointment-card--cancelled' : ''}`}>
             <div className="appointment-card__header">
               <div className="appointment-card__type">
-                <h4>{appointment.type}</h4>
-                <p>{appointment.service?.name}</p>
+                <h4>{appointment.appointment_type?.replace('_', ' ').toUpperCase() || 'Appointment'}</h4>
               </div>
               <span className={`appointment-status ${getStatusColor(appointment.status)}`}>
                 {appointment.status}
@@ -87,18 +89,10 @@ const MyAppointments = () => {
 
             <div className="appointment-card__body">
               <div className="appointment-detail">
-                <span className="detail-icon">📍</span>
-                <div>
-                  <span className="detail-label">Location</span>
-                  <span className="detail-value">{getLocationName(appointment.location)}</span>
-                </div>
-              </div>
-
-              <div className="appointment-detail">
                 <span className="detail-icon">📅</span>
                 <div>
                   <span className="detail-label">Date</span>
-                  <span className="detail-value">{formatDate(appointment.date)}</span>
+                  <span className="detail-value">{formatDate(appointment.appointment_date)}</span>
                 </div>
               </div>
 
@@ -106,7 +100,15 @@ const MyAppointments = () => {
                 <span className="detail-icon">🕐</span>
                 <div>
                   <span className="detail-label">Time</span>
-                  <span className="detail-value">{appointment.time}</span>
+                  <span className="detail-value">{appointment.appointment_time}</span>
+                </div>
+              </div>
+
+              <div className="appointment-detail">
+                <span className="detail-icon">✉️</span>
+                <div>
+                  <span className="detail-label">Email</span>
+                  <span className="detail-value">{appointment.customer_email}</span>
                 </div>
               </div>
             </div>

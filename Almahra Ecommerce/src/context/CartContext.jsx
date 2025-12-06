@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useReducer, useEffect } from "react";
+import React, { createContext, useContext, useReducer, useEffect, useState } from "react";
 import { storage } from "../utils/helpers.js";
 import cartService from "../services/cartService.js";
 import { useAuth } from "./AuthContext.jsx";
+import Notification from "../components/common/Notification/Notification.jsx";
 
 // Initial state
 const getInitialState = () => {
@@ -23,6 +24,7 @@ const CART_ACTIONS = {
   UPDATE_QUANTITY: "UPDATE_QUANTITY",
   CLEAR_CART: "CLEAR_CART",
   TOGGLE_CART: "TOGGLE_CART",
+  LOAD_CART: "LOAD_CART",
 };
 
 // Cart reducer
@@ -141,6 +143,24 @@ const cartReducer = (state, action) => {
         isOpen: !state.isOpen,
       };
 
+    case CART_ACTIONS.LOAD_CART:
+      const loadedItems = action.payload.items || [];
+      const loadedTotal = loadedItems.reduce(
+        (sum, item) => {
+          // Safety check for product and price
+          const price = item.variant?.price || item.product?.price || 0;
+          return sum + price * (item.quantity || 0);
+        },
+        0
+      );
+      const loadedItemCount = loadedItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      return {
+        ...state,
+        items: loadedItems,
+        total: loadedTotal,
+        itemCount: loadedItemCount,
+      };
+
     default:
       return state;
   }
@@ -153,6 +173,11 @@ const CartContext = createContext();
 export const CartProvider = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, getInitialState());
   const { isAuthenticated } = useAuth();
+  const [notification, setNotification] = useState(null);
+
+  const showNotification = (message, type = 'error') => {
+    setNotification({ message, type });
+  };
 
   // Load cart from backend when user logs in
   useEffect(() => {
@@ -160,18 +185,33 @@ export const CartProvider = ({ children }) => {
       if (isAuthenticated) {
         try {
           const cartData = await cartService.getCart();
-          if (cartData && cartData.items) {
-            // Update state with backend cart
-            dispatch({ type: CART_ACTIONS.CLEAR_CART });
-            cartData.items.forEach(item => {
-              dispatch({
-                type: CART_ACTIONS.ADD_ITEM,
-                payload: {
-                  product: item.product,
-                  variant: item.variant,
-                  quantity: item.quantity
-                }
-              });
+          console.log('Cart data from backend:', cartData);
+          
+          // Backend returns cart_items, not items
+          if (cartData && cartData.cart_items && cartData.cart_items.length > 0) {
+            // Map backend cart items to local format, preserving backend IDs
+            const mappedItems = cartData.cart_items
+              .filter(item => item.product) // Filter out items with null products
+              .map(item => ({
+                id: `${item.product.id}-${item.product_variant?.id || 'default'}`,
+                cartItemId: item.id, // Preserve backend cart_item_id
+                product: item.product,
+                variant: item.product_variant,
+                quantity: item.quantity
+              }));
+            
+            console.log('Mapped items:', mappedItems);
+            
+            // Replace entire cart with backend data
+            dispatch({
+              type: 'LOAD_CART',
+              payload: { items: mappedItems }
+            });
+          } else {
+            // Empty cart from backend
+            dispatch({
+              type: 'LOAD_CART',
+              payload: { items: [] }
             });
           }
         } catch (err) {
@@ -189,66 +229,159 @@ export const CartProvider = ({ children }) => {
   }, [state]);
 
   const addToCart = async (product, variant = null, quantity = 1) => {
-    // Update local state immediately
-    dispatch({
-      type: CART_ACTIONS.ADD_ITEM,
-      payload: { product, variant, quantity },
-    });
-
-    // Sync with backend if authenticated
+    // Sync with backend first if authenticated to validate stock
     if (isAuthenticated) {
       try {
-        await cartService.addToCart({
-          productId: product.id,
-          variantId: variant?.id,
-          quantity
-        });
+        await cartService.addToCart(product.id, quantity, variant?.id);
+        
+        // Reload cart from backend to get updated state with correct IDs
+        const cartData = await cartService.getCart();
+        if (cartData && cartData.cart_items) {
+          const mappedItems = cartData.cart_items
+            .filter(item => item.product)
+            .map(item => ({
+              id: `${item.product.id}-${item.product_variant?.id || 'default'}`,
+              cartItemId: item.id,
+              product: item.product,
+              variant: item.product_variant,
+              quantity: item.quantity
+            }));
+          
+          dispatch({
+            type: 'LOAD_CART',
+            payload: { items: mappedItems }
+          });
+        }
       } catch (err) {
-        console.error('Error syncing cart with backend:', err);
+        console.error('Error adding to cart:', err);
+        // Show detailed error to user
+        const errorData = err.response?.data;
+        let errorMessage = errorData?.error || 'Failed to add item to cart';
+        
+        // Add more context for stock errors
+        if (errorData?.available_stock !== undefined && errorData?.current_in_cart !== undefined) {
+          // User trying to add more when cart already has items
+          errorMessage = `Stock Limit Reached!\n\nYou have ${errorData.current_in_cart} item(s) in your cart.\nOnly ${errorData.available_stock} available in stock.\n\nPlease reduce the quantity in your cart or choose a different product.`;
+        } else if (errorData?.available_stock !== undefined) {
+          errorMessage = `Stock Limit Reached!\n\nOnly ${errorData.available_stock} item(s) available in stock.`;
+        }
+        
+        showNotification(errorMessage, 'warning');
+        throw err; // Re-throw so calling code can handle it
       }
+    } else {
+      // For guest users, check stock locally before adding
+      if (product.track_inventory && product.stock_quantity < quantity) {
+        alert(`Only ${product.stock_quantity} items available in stock`);
+        return;
+      }
+      
+      // Update local state immediately for guest users
+      dispatch({
+        type: CART_ACTIONS.ADD_ITEM,
+        payload: { product, variant, quantity },
+      });
     }
   };
 
   const removeFromCart = async (id) => {
-    // Extract product/variant IDs from the composite ID
-    const [productId, variantId] = id.split('-');
+    const item = state.items.find(item => item.id === id);
     
-    // Update local state immediately
-    dispatch({
-      type: CART_ACTIONS.REMOVE_ITEM,
-      payload: { id },
-    });
-
     // Sync with backend if authenticated
-    if (isAuthenticated) {
+    if (isAuthenticated && item?.cartItemId) {
       try {
-        await cartService.removeFromCart(parseInt(productId), variantId !== 'default' ? parseInt(variantId) : null);
+        await cartService.removeFromCart(item.cartItemId);
+        
+        // Reload cart from backend
+        const cartData = await cartService.getCart();
+        if (cartData && cartData.cart_items) {
+          const mappedItems = cartData.cart_items
+            .filter(item => item.product)
+            .map(item => ({
+              id: `${item.product.id}-${item.product_variant?.id || 'default'}`,
+              cartItemId: item.id,
+              product: item.product,
+              variant: item.product_variant,
+              quantity: item.quantity
+            }));
+          
+          dispatch({
+            type: 'LOAD_CART',
+            payload: { items: mappedItems }
+          });
+        } else {
+          // Cart is empty
+          dispatch({
+            type: 'LOAD_CART',
+            payload: { items: [] }
+          });
+        }
       } catch (err) {
-        console.error('Error syncing cart removal with backend:', err);
+        console.error('Error removing from cart:', err);
+        showNotification('Failed to remove item from cart', 'error');
       }
+    } else {
+      // For guest users, update local state
+      dispatch({
+        type: CART_ACTIONS.REMOVE_ITEM,
+        payload: { id },
+      });
     }
   };
 
   const updateQuantity = async (id, quantity) => {
-    // Extract product/variant IDs from the composite ID
-    const [productId, variantId] = id.split('-');
+    // Find the item to get its backend cart_item_id
+    const item = state.items.find(item => item.id === id);
     
-    // Update local state immediately
-    dispatch({
-      type: CART_ACTIONS.UPDATE_QUANTITY,
-      payload: { id, quantity },
-    });
-
-    // Sync with backend if authenticated
-    if (isAuthenticated) {
+    // Sync with backend first if authenticated to validate stock
+    if (isAuthenticated && item?.cartItemId) {
       try {
-        await cartService.updateCartItem(parseInt(productId), {
-          variantId: variantId !== 'default' ? parseInt(variantId) : null,
-          quantity
-        });
+        await cartService.updateCartItem(item.cartItemId, quantity);
+        
+        // Reload cart from backend to get updated state
+        const cartData = await cartService.getCart();
+        if (cartData && cartData.cart_items) {
+          const mappedItems = cartData.cart_items
+            .filter(item => item.product)
+            .map(item => ({
+              id: `${item.product.id}-${item.product_variant?.id || 'default'}`,
+              cartItemId: item.id,
+              product: item.product,
+              variant: item.product_variant,
+              quantity: item.quantity
+            }));
+          
+          dispatch({
+            type: 'LOAD_CART',
+            payload: { items: mappedItems }
+          });
+        }
       } catch (err) {
-        console.error('Error syncing cart update with backend:', err);
+        console.error('Error updating cart quantity:', err);
+        // Show detailed error to user
+        const errorData = err.response?.data;
+        let errorMessage = errorData?.error || 'Failed to update quantity';
+        
+        if (errorData?.available_stock !== undefined) {
+          errorMessage += `\n\nOnly ${errorData.available_stock} available in stock.`;
+        }
+        
+        showNotification(errorMessage, 'warning');
+        // Don't update local state if backend fails
+        throw err;
       }
+    } else {
+      // For guest users, find the item and check stock
+      if (item && item.product.track_inventory && item.product.stock_quantity < quantity) {
+        alert(`Only ${item.product.stock_quantity} items available in stock`);
+        return;
+      }
+      
+      // Update local state immediately for guest users
+      dispatch({
+        type: CART_ACTIONS.UPDATE_QUANTITY,
+        payload: { id, quantity },
+      });
     }
   };
 
@@ -279,7 +412,18 @@ export const CartProvider = ({ children }) => {
     toggleCart,
   };
 
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  return (
+    <CartContext.Provider value={value}>
+      {children}
+      {notification && (
+        <Notification
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
+    </CartContext.Provider>
+  );
 };
 
 // Custom hook to use cart context

@@ -18,7 +18,7 @@ const ProductsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Filter options - Lenskart exact options
+  // All available filter options
   const frameTypes = ['Full Rim', 'Half Rim', 'Rimless'];
   const frameShapes = ['Rectangle', 'Round', 'Square', 'Oval', 'Cat-Eye', 'Aviator', 'Wayfarer', 'Clubmaster', 'Geometric'];
   const materials = ['Acetate', 'Metal', 'Stainless Steel', 'Titanium', 'TR-90', 'Plastic', 'Wood', 'Mixed Material'];
@@ -61,6 +61,13 @@ const ProductsPage = () => {
 
   // Filter products
   const filteredProducts = useMemo(() => {
+    console.log('Filtering products:', {
+      totalProducts: products.length,
+      selectedFrameType,
+      selectedFrameShape,
+      selectedMaterial
+    });
+    
     return products.filter(product => {
       const frameTypeMatch = selectedFrameType === 'all' || product.frameType === selectedFrameType;
       const frameShapeMatch = selectedFrameShape === 'all' || product.frameShape === selectedFrameShape;
@@ -68,7 +75,7 @@ const ProductsPage = () => {
       
       return frameTypeMatch && frameShapeMatch && materialMatch;
     });
-  }, [selectedFrameType, selectedFrameShape, selectedMaterial]);
+  }, [products, selectedFrameType, selectedFrameShape, selectedMaterial]);
 
   // Pagination
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
@@ -144,13 +151,13 @@ const ProductsPage = () => {
                   </label>
                 </li>
                 {frameTypes.map(frameType => (
-                  <li key={frameType.id} className="filter-item">
+                  <li key={frameType} className="filter-item">
                     <label className="filter-label">
                       <input
                         type="radio"
                         name="frameType"
-                        value={frameType.id}
-                        checked={selectedFrameType === frameType.id}
+                        value={frameType}
+                        checked={selectedFrameType === frameType}
                         onChange={(e) => {
                           setSelectedFrameType(e.target.value);
                           setCurrentPage(1);
@@ -158,7 +165,7 @@ const ProductsPage = () => {
                         className="filter-input"
                       />
                       <span className="filter-text">
-                        {frameType.name}
+                        {frameType}
                       </span>
                     </label>
                   </li>
@@ -186,13 +193,13 @@ const ProductsPage = () => {
                   </label>
                 </li>
                 {frameShapes.map(frameShape => (
-                  <li key={frameShape.id} className="filter-item">
+                  <li key={frameShape} className="filter-item">
                     <label className="filter-label">
                       <input
                         type="radio"
                         name="frameShape"
-                        value={frameShape.id}
-                        checked={selectedFrameShape === frameShape.id}
+                        value={frameShape}
+                        checked={selectedFrameShape === frameShape}
                         onChange={(e) => {
                           setSelectedFrameShape(e.target.value);
                           setCurrentPage(1);
@@ -200,7 +207,7 @@ const ProductsPage = () => {
                         className="filter-input"
                       />
                       <span className="filter-text">
-                        {frameShape.name}
+                        {frameShape}
                       </span>
                     </label>
                   </li>
@@ -228,13 +235,13 @@ const ProductsPage = () => {
                   </label>
                 </li>
                 {materials.map(material => (
-                  <li key={material.id} className="filter-item">
+                  <li key={material} className="filter-item">
                     <label className="filter-label">
                       <input
                         type="radio"
                         name="material"
-                        value={material.id}
-                        checked={selectedMaterial === material.id}
+                        value={material}
+                        checked={selectedMaterial === material}
                         onChange={(e) => {
                           setSelectedMaterial(e.target.value);
                           setCurrentPage(1);
@@ -242,7 +249,7 @@ const ProductsPage = () => {
                         className="filter-input"
                       />
                       <span className="filter-text">
-                        {material.name}
+                        {material}
                       </span>
                     </label>
                   </li>
@@ -296,42 +303,11 @@ const ProductsPage = () => {
             </div>
           )}
 
-          {/* Related Products Section */}
-          <div className="related-products">
-            <div className="related-products__row">
-              {products.slice(0, 5).map(product => (
-                <div key={`related-1-${product.id}`} className="related-product">
-                  <div className="related-product__image">
-                    <img src={product.image} alt={product.name} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* CTA Banner */}
-            <div className="products-cta-banner">
-              <div className="products-cta-banner__content">
-                <h3>Find Your Perfect Ray-Ban Style</h3>
-                <p>Discover our complete collection of premium eyewear</p>
-              </div>
-            </div>
-
-            <div className="related-products__row">
-              {products.slice(5, 10).map(product => (
-                <div key={`related-2-${product.id}`} className="related-product">
-                  <div className="related-product__image">
-                    <img src={product.image} alt={product.name} />
-                  </div>
-                </div>
-              ))}
-              {/* Ensure we always have 5 cards */}
-              {Array.from({ length: Math.max(0, 5 - products.slice(5, 10).length) }, (_, i) => (
-                <div key={`placeholder-${i}`} className="related-product">
-                  <div className="related-product__image">
-                    <div className="product-placeholder">Product {i + 6}</div>
-                  </div>
-                </div>
-              ))}
+          {/* CTA Banner */}
+          <div className="products-cta-banner">
+            <div className="products-cta-banner__content">
+              <h3>Find Your Perfect Ray-Ban Style</h3>
+              <p>Discover our complete collection of premium eyewear</p>
             </div>
           </div>
         </main>

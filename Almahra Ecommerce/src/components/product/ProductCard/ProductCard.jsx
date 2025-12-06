@@ -122,7 +122,7 @@ const ProductCard = ({ product, className = "" }) => {
               ))}
             </div>
             <span className="product-card__rating-text">
-              ({product.reviews || 0})
+              {product.reviews > 0 ? `(${product.reviews})` : 'No reviews yet'}
             </span>
           </div>
         )}
@@ -188,6 +188,16 @@ const ProductCard = ({ product, className = "" }) => {
           className="product-card__add-to-cart"
         >
           {product.inStock ? "Add to Cart" : "Out of Stock"}
+        </Button>
+
+        {/* View Cart Button */}
+        <Button
+          variant="secondary"
+          size="medium"
+          onClick={() => navigate('/cart')}
+          className="product-card__view-cart"
+        >
+          View Cart
         </Button>
       </div>
     </div>

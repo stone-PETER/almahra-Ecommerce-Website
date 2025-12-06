@@ -23,10 +23,16 @@ const authService = {
     try {
       const response = await api.post('/auth/login', credentials);
       
+      console.log('Login response:', response.data);
+      console.log('Access token:', response.data.access_token);
+      
       // Store token and user info
       if (response.data.access_token) {
         localStorage.setItem('token', response.data.access_token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        console.log('Token stored in localStorage:', localStorage.getItem('token'));
+      } else {
+        console.error('No access_token in response!');
       }
       
       return response.data;

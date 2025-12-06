@@ -68,9 +68,9 @@ def register():
         except Exception as e:
             current_app.logger.error(f"Failed to send verification email: {str(e)}")
         
-        # Create access token
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        # Create access token - identity must be a string
+        access_token = create_access_token(identity=str(user.id))
+        refresh_token = create_refresh_token(identity=str(user.id))
         
         return jsonify({
             'message': 'User registered successfully',
@@ -114,9 +114,9 @@ def login():
     if not user or not user.check_password(password):
         return jsonify({'error': 'Invalid email or password'}), 401
     
-    # Create tokens
-    access_token = create_access_token(identity=user.id)
-    refresh_token = create_refresh_token(identity=user.id)
+    # Create tokens - identity must be a string
+    access_token = create_access_token(identity=str(user.id))
+    refresh_token = create_refresh_token(identity=str(user.id))
     
     return jsonify({
         'message': 'Login successful',
@@ -130,12 +130,13 @@ def login():
 def refresh():
     """Refresh access token"""
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    # current_user_id is already a string from JWT, but ensure it stays a string
+    user = User.query.get(int(current_user_id) if current_user_id.isdigit() else current_user_id)
     
     if not user:
         return jsonify({'error': 'User not found'}), 404
     
-    new_access_token = create_access_token(identity=current_user_id)
+    new_access_token = create_access_token(identity=str(current_user_id))
     
     return jsonify({
         'access_token': new_access_token

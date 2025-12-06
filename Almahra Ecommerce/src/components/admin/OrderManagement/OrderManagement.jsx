@@ -37,31 +37,34 @@ const OrderManagement = () => {
 
   const tabs = [
     { id: 'all', label: 'All Orders', count: orders.length },
-    { id: 'pending', label: 'Pending', count: orders.filter(o => o.status === 'pending').length },
-    { id: 'processing', label: 'Processing', count: orders.filter(o => o.status === 'processing').length },
-    { id: 'completed', label: 'Completed', count: orders.filter(o => o.status === 'completed').length },
-    { id: 'cancelled', label: 'Cancelled', count: orders.filter(o => o.status === 'cancelled').length }
+    { id: 'pending', label: 'Pending', count: orders.filter(o => o.status?.toUpperCase() === 'PENDING').length },
+    { id: 'confirmed', label: 'Confirmed', count: orders.filter(o => o.status?.toUpperCase() === 'CONFIRMED').length },
+    { id: 'processing', label: 'Processing', count: orders.filter(o => o.status?.toUpperCase() === 'PROCESSING').length },
+    { id: 'delivered', label: 'Delivered', count: orders.filter(o => o.status?.toUpperCase() === 'DELIVERED').length },
+    { id: 'cancelled', label: 'Cancelled', count: orders.filter(o => o.status?.toUpperCase() === 'CANCELLED').length }
   ];
 
   // Filter and sort orders with useMemo for performance
   const filteredAndSortedOrders = useMemo(() => {
     let filtered = selectedTab === 'all' 
       ? orders 
-      : orders.filter(order => order.status === selectedTab);
+      : orders.filter(order => order.status?.toUpperCase() === selectedTab.toUpperCase());
     
     // Apply search filter
     if (searchTerm.trim()) {
-      filtered = filtered.filter(order => 
-        order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(order => {
+        const customerName = order.notes?.toLowerCase() || '';
+        const email = order.customer_email?.toLowerCase() || '';
+        const orderNum = order.order_number?.toLowerCase() || '';
+        const searchLower = searchTerm.toLowerCase();
+        return customerName.includes(searchLower) || email.includes(searchLower) || orderNum.includes(searchLower);
+      });
     }
     
     // Apply date sorting
     filtered = [...filtered].sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
+      const dateA = new Date(a.created_at);
+      const dateB = new Date(b.created_at);
       return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
     });
     
@@ -69,22 +72,39 @@ const OrderManagement = () => {
   }, [orders, selectedTab, searchTerm, sortOrder]);
 
   const getStatusClass = (status) => {
-    switch (status) {
-      case 'completed':
+    const statusUpper = status?.toUpperCase();
+    switch (statusUpper) {
+      case 'DELIVERED':
         return 'status--success';
-      case 'processing':
+      case 'PROCESSING':
         return 'status--warning';
-      case 'pending':
+      case 'CONFIRMED':
+        return 'status--info';
+      case 'PENDING':
         return 'status--pending';
-      case 'cancelled':
+      case 'CANCELLED':
+      case 'RETURNED':
         return 'status--danger';
       default:
         return '';
     }
   };
 
-  const handleStatusChange = (orderId, newStatus) => {
-    console.log(`Updating order ${orderId} to ${newStatus}`);
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      await orderService.updateOrderStatus(orderId, newStatus);
+      // Update local state
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { ...order, status: newStatus.toUpperCase() }
+            : order
+        )
+      );
+    } catch (err) {
+      console.error('Error updating order status:', err);
+      alert('Failed to update order status. Please try again.');
+    }
   };
 
   const handleViewOrder = (orderId) => {
@@ -120,7 +140,12 @@ const OrderManagement = () => {
         <h1 className="order-management__title">Order Management</h1>
         <div className="order-stats">
           <div className="order-stat">
-            <span className="order-stat__value">₹1,25,840</span>
+            <span className="order-stat__value">
+              ₹{orders
+                .filter(order => order.status === 'DELIVERED')
+                .reduce((total, order) => total + (order.total_amount || 0), 0)
+                .toLocaleString()}
+            </span>
             <span className="order-stat__label">Total Revenue</span>
           </div>
           <div className="order-stat">
@@ -198,11 +223,11 @@ const OrderManagement = () => {
           <div key={order.id} className="order-card">
             <div className="order-card__header">
               <div className="order-card__id">
-                <strong>{order.id}</strong>
-                <span className="order-card__date">{order.date}</span>
+                <strong>{order.order_number}</strong>
+                <span className="order-card__date">{new Date(order.created_at).toLocaleDateString()}</span>
               </div>
               <div className="order-card__status">
-                <span className={`status-badge ${getStatusClass(order.status)}`}>
+                <span className={`status-badge ${getStatusClass(order.status?.toLowerCase())}`}>
                   {order.status}
                 </span>
               </div>
@@ -210,23 +235,26 @@ const OrderManagement = () => {
 
             <div className="order-card__content">
               <div className="order-card__customer">
-                <h3 className="customer-name">{order.customer}</h3>
-                <p className="customer-email">{order.email}</p>
-                <p className="customer-address">{order.address}</p>
+                <h3 className="customer-name">{order.notes?.split(',')[0] || 'Customer'}</h3>
+                <p className="customer-email">{order.customer_email}</p>
+                <p className="customer-address">{typeof order.shipping_address === 'string' ? JSON.parse(order.shipping_address).city : order.shipping_address?.city}</p>
               </div>
 
               <div className="order-card__products">
-                <div className="products-title">Products:</div>
-                <ul className="products-list">
-                  {order.products.map((product, index) => (
-                    <li key={index} className="product-item">{product}</li>
-                  ))}
-                </ul>
+                <div className="products-title">Items: {order.item_count || 0}</div>
+                {order.items && order.items.length > 0 && (
+                  <ul className="products-list">
+                    {order.items.slice(0, 3).map((item, index) => (
+                      <li key={index} className="product-item">{item.product_name} x {item.quantity}</li>
+                    ))}
+                    {order.items.length > 3 && <li className="product-item">+{order.items.length - 3} more</li>}
+                  </ul>
+                )}
               </div>
 
               <div className="order-card__total">
                 <span className="total-label">Total:</span>
-                <span className="total-amount">₹{order.total.toLocaleString()}</span>
+                <span className="total-amount">₹{(order.total_amount || 0).toLocaleString()}</span>
               </div>
             </div>
 
@@ -240,12 +268,14 @@ const OrderManagement = () => {
               
               <select
                 className="status-select"
-                value={order.status}
+                value={order.status?.toLowerCase() || 'pending'}
                 onChange={(e) => handleStatusChange(order.id, e.target.value)}
               >
                 <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
                 <option value="processing">Processing</option>
-                <option value="completed">Completed</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>

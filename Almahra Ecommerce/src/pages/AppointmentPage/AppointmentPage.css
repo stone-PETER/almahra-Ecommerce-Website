@@ -1,5 +1,5 @@
 .appointment-page {
-  min-height: calc(100vh - var(--header-height, 80px));
+  min-height: calc(100vh - var(--header-height));
   padding: var(--spacing-xl) var(--spacing-md);
   background: var(--bg-light);
 }

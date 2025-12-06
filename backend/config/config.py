@@ -8,7 +8,7 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-change-in-production'
     
     # Database configuration
-    DATABASE_URL = os.environ.get('DATABASE_URL') or 'postgresql://username:password@localhost/almahra_ecommerce'
+    DATABASE_URL = os.environ.get('DATABASE_URL') or 'postgresql://postgres:2934@localhost/almahra_ecommerce'
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
@@ -45,7 +45,7 @@ class DevelopmentConfig(Config):
     """Development configuration"""
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
-        'postgresql://username:password@localhost/almahra_ecommerce'
+        'postgresql://postgres:2934@localhost/almahra_ecommerce'
 
 class ProductionConfig(Config):
     """Production configuration"""

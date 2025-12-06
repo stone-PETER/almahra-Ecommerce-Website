@@ -19,7 +19,7 @@ export const transformProduct = (product) => {
     stockQuantity: product.stock_quantity,
     inStock: product.in_stock,
     isLowStock: product.is_low_stock,
-    brand: product.brand,
+    brand: typeof product.brand === 'object' ? product.brand?.name : product.brand,
     weight: product.weight,
     dimensions: product.dimensions,
     material: product.material,

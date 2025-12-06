@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from '../../common/Button/Button.jsx';
 import './OrderHistory.css';
 
 const OrderHistory = ({ orders }) => {
+  const navigate = useNavigate();
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const getStatusBadgeClass = (status) => {
@@ -65,41 +67,37 @@ const OrderHistory = ({ orders }) => {
             <div key={order.id} className="order-card">
               <div className="order-card__header">
                 <div className="order-card__info">
-                  <h3 className="order-card__id">{order.id}</h3>
-                  <p className="order-card__date">Ordered on {formatDate(order.date)}</p>
+                  <h3 className="order-card__id">{order.order_number}</h3>
+                  <p className="order-card__date">Ordered on {formatDate(order.created_at)}</p>
                 </div>
                 <div className="order-card__status">
-                  <span className={`order-status ${getStatusBadgeClass(order.status)}`}>
-                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                  <span className={`order-status ${getStatusBadgeClass(order.status?.toLowerCase())}`}>
+                    {order.status?.charAt(0).toUpperCase() + order.status?.slice(1).toLowerCase()}
                   </span>
                 </div>
               </div>
 
               <div className="order-card__content">
                 <div className="order-items">
-                  {order.items.map((item, index) => (
+                  {order.items && order.items.length > 0 ? order.items.map((item, index) => (
                     <div key={index} className="order-item">
-                      <img 
-                        src={item.image} 
-                        alt={item.name}
-                        className="order-item__image"
-                      />
                       <div className="order-item__details">
-                        <h4 className="order-item__name">{item.name}</h4>
-                        <p className="order-item__brand">{item.brand}</p>
-                        <p className="order-item__variant">Variant: {item.variant}</p>
+                        <h4 className="order-item__name">{item.product_name}</h4>
                         <p className="order-item__quantity">Qty: {item.quantity}</p>
+                        <p className="order-item__price">{formatPrice(item.unit_price)}</p>
                       </div>
                       <div className="order-item__price">
-                        {formatPrice(item.price)}
+                        {formatPrice(item.total_price)}
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <p className="order-items__empty">{order.item_count || 0} item(s)</p>
+                  )}
                 </div>
 
                 <div className="order-card__total">
                   <span className="order-total__label">Total: </span>
-                  <span className="order-total__amount">{formatPrice(order.total)}</span>
+                  <span className="order-total__amount">{formatPrice(order.total_amount)}</span>
                 </div>
               </div>
 
@@ -112,7 +110,7 @@ const OrderHistory = ({ orders }) => {
                   View Details
                 </Button>
                 
-                {(order.status === 'processing' || order.status === 'shipped') && (
+                {(order.status?.toLowerCase() === 'processing' || order.status?.toLowerCase() === 'shipped') && (
                   <Button
                     variant="secondary"
                     size="small"
@@ -137,7 +135,7 @@ const OrderHistory = ({ orders }) => {
           <p className="empty-state__message">
             You haven't placed any orders yet. Start shopping to see your order history here.
           </p>
-          <Button variant="primary" size="medium">
+          <Button variant="primary" size="medium" onClick={() => navigate('/products')}>
             Start Shopping
           </Button>
         </div>

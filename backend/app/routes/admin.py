@@ -27,19 +27,22 @@ def get_dashboard():
         end_date = datetime.utcnow()
         start_date = end_date - timedelta(days=days)
         
-        # Sales metrics
-        sales_query = db.session.query(
-            func.sum(Order.total_amount),
-            func.count(Order.id)
+        # Sales metrics - only count delivered orders for revenue
+        revenue_query = db.session.query(
+            func.sum(Order.total_amount)
         ).filter(
             and_(
                 Order.created_at >= start_date,
-                Order.payment_status == PaymentStatus.COMPLETED
+                Order.status == OrderStatus.DELIVERED
             )
         ).first()
         
-        total_revenue = float(sales_query[0]) if sales_query[0] else 0
-        total_orders = sales_query[1] if sales_query[1] else 0
+        total_revenue = float(revenue_query[0]) if revenue_query[0] else 0
+        
+        # Total orders count - all orders in date range
+        total_orders = Order.query.filter(
+            Order.created_at >= start_date
+        ).count()
         
         # Product metrics
         total_products = Product.query.filter_by(is_active=True).count()
@@ -70,7 +73,29 @@ def get_dashboard():
             Order.created_at.desc()
         ).limit(10).all()
         
-        # Top selling products
+        # Format recent orders for dashboard display
+        formatted_recent_orders = []
+        for order in recent_orders:
+            # Get first product name from order items
+            product_name = "N/A"
+            if order.items:
+                first_item = order.items[0] if hasattr(order.items, '__iter__') else order.items.first()
+                if first_item:
+                    product_name = first_item.product_name
+                    if len(list(order.items)) > 1:
+                        product_name += f" (+{len(list(order.items)) - 1} more)"
+            
+            formatted_recent_orders.append({
+                'id': order.id,
+                'order_number': order.order_number,
+                'customer': order.customer_email,
+                'product': product_name,
+                'amount': f"₹{float(order.total_amount):,.0f}",
+                'status': order.status.value,
+                'created_at': order.created_at.isoformat() if order.created_at else None
+            })
+        
+        # Top selling products - only count delivered orders
         top_products = db.session.query(
             Product.name,
             func.sum(OrderItem.quantity).label('total_sold'),
@@ -82,7 +107,7 @@ def get_dashboard():
         ).filter(
             and_(
                 Order.created_at >= start_date,
-                Order.payment_status == PaymentStatus.COMPLETED
+                Order.status == OrderStatus.DELIVERED
             )
         ).group_by(
             Product.id, Product.name
@@ -101,7 +126,7 @@ def get_dashboard():
                 'pending_orders': pending_orders,
                 'average_order_value': total_revenue / total_orders if total_orders > 0 else 0
             },
-            'recent_orders': [order.to_dict() for order in recent_orders],
+            'recent_orders': formatted_recent_orders,
             'top_products': [
                 {
                     'name': product[0],
@@ -186,11 +211,13 @@ def get_all_orders():
 
 @admin_bp.route('/orders/<int:order_id>/status', methods=['PUT'])
 @admin_required
-@validate_json
 def update_order_status(order_id):
     """Update order status"""
     try:
-        data = request.get_json()
+        data = request.get_json(force=True, silent=True)
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
         
         if 'status' not in data:
             return jsonify({'error': 'Status is required'}), 400
@@ -199,14 +226,38 @@ def update_order_status(order_id):
         if not order:
             return jsonify({'error': 'Order not found'}), 404
         
-        # Validate status
+        # Validate status - convert to uppercase first
         try:
-            new_status = OrderStatus(data['status'])
+            status_value = data['status'].upper()
+            new_status = OrderStatus(status_value)
         except ValueError:
-            return jsonify({'error': 'Invalid order status'}), 400
+            return jsonify({
+                'error': f'Invalid order status: {data["status"]}',
+                'valid_statuses': [s.value for s in OrderStatus]
+            }), 400
         
         old_status = order.status
         order.status = new_status
+        
+        # Handle stock reduction when order is confirmed
+        if new_status == OrderStatus.CONFIRMED and old_status != OrderStatus.CONFIRMED:
+            for item in order.items:
+                product = Product.query.get(item.product_id)
+                if product and product.track_inventory:
+                    if product.stock_quantity >= item.quantity:
+                        product.stock_quantity -= item.quantity
+                        current_app.logger.info(f"Reduced stock for product {product.id} by {item.quantity}")
+                    else:
+                        # Log warning but don't block the order
+                        current_app.logger.warning(f"Insufficient stock for product {product.id}: requested {item.quantity}, available {product.stock_quantity}")
+        
+        # Handle stock restoration when order is cancelled or returned
+        elif new_status in [OrderStatus.CANCELLED, OrderStatus.RETURNED] and old_status == OrderStatus.CONFIRMED:
+            for item in order.items:
+                product = Product.query.get(item.product_id)
+                if product and product.track_inventory:
+                    product.stock_quantity += item.quantity
+                    current_app.logger.info(f"Restored stock for product {product.id} by {item.quantity}")
         
         # Handle shipping information
         if new_status == OrderStatus.SHIPPED:

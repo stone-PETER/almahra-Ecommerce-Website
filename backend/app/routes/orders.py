@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import db, Order, User, OrderStatus
+from app.models import db, Order, OrderItem, CartItem, User, OrderStatus, PaymentStatus
 from app.utils.auth import get_current_user
-from app.utils.validators import validate_pagination_params
+from app.utils.validators import validate_pagination_params, validate_json, validate_required_fields
 from app.services.email_service import send_order_shipped_email
+import json
 
 orders_bp = Blueprint('orders', __name__)
 
@@ -57,6 +58,126 @@ def get_user_orders():
     except Exception as e:
         current_app.logger.error(f"Error fetching user orders: {str(e)}")
         return jsonify({'error': 'Failed to fetch orders'}), 500
+
+@orders_bp.route('', methods=['POST'])
+@jwt_required()
+@validate_json
+def create_order():
+    """Create a new order from cart items"""
+    try:
+        current_user_id = get_jwt_identity()
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['shipping_address', 'payment_method']
+        validation_errors = validate_required_fields(data, required_fields)
+        if validation_errors:
+            return jsonify({'errors': validation_errors}), 400
+        
+        # Get user
+        user = User.query.get(int(current_user_id))
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Get cart items from database or from request
+        cart_items = CartItem.query.filter_by(user_id=int(current_user_id)).all()
+        items_from_request = data.get('items', [])
+        
+        if not cart_items and not items_from_request:
+            return jsonify({'error': 'Cart is empty'}), 400
+        
+        # Calculate totals
+        if cart_items:
+            subtotal = sum(item.total_price for item in cart_items)
+        else:
+            # Calculate from request items
+            subtotal = sum(item.get('price', 0) * item.get('quantity', 1) for item in items_from_request)
+        tax_amount = 0  # Calculate based on your tax rules
+        shipping_amount = 0  # Calculate based on shipping method
+        discount_amount = 0  # Apply any discounts
+        total_amount = subtotal + tax_amount + shipping_amount - discount_amount
+        
+        # Parse shipping address
+        shipping_address = data['shipping_address']
+        if isinstance(shipping_address, dict):
+            shipping_address = json.dumps(shipping_address)
+        
+        # Create order
+        order = Order(
+            order_number=Order.generate_order_number(),
+            user_id=int(current_user_id),
+            status=OrderStatus.PENDING,
+            payment_status=PaymentStatus.PENDING if data['payment_method'] == 'card' else PaymentStatus.COMPLETED,
+            subtotal=subtotal,
+            tax_amount=tax_amount,
+            shipping_amount=shipping_amount,
+            discount_amount=discount_amount,
+            total_amount=total_amount,
+            customer_email=user.email,
+            customer_phone=user.phone,
+            billing_address=shipping_address,
+            shipping_address=shipping_address,
+            payment_method=data['payment_method'],
+            notes=data.get('notes', '')
+        )
+        
+        db.session.add(order)
+        db.session.flush()  # Get order ID
+        
+        # Create order items from cart or request
+        if cart_items:
+            for cart_item in cart_items:
+                order_item = OrderItem(
+                    order_id=order.id,
+                    product_id=cart_item.product_id,
+                    product_variant_id=cart_item.product_variant_id,
+                    prescription_id=cart_item.prescription_id,
+                    product_name=cart_item.product.name,
+                    product_sku=cart_item.product.sku,
+                    quantity=cart_item.quantity,
+                    unit_price=cart_item.unit_price,
+                    total_price=cart_item.total_price,
+                    lens_options=cart_item.lens_options,
+                    frame_adjustments=cart_item.frame_adjustments,
+                    special_instructions=cart_item.special_instructions
+                )
+                db.session.add(order_item)
+            
+            # Clear cart
+            for cart_item in cart_items:
+                db.session.delete(cart_item)
+        else:
+            # Create order items from request
+            for item in items_from_request:
+                order_item = OrderItem(
+                    order_id=order.id,
+                    product_id=item.get('product_id', item.get('id')),
+                    product_variant_id=item.get('variant_id'),
+                    prescription_id=None,
+                    product_name=item.get('name', 'Unknown'),
+                    product_sku=item.get('sku', ''),
+                    quantity=item.get('quantity', 1),
+                    unit_price=item.get('price', 0),
+                    total_price=item.get('price', 0) * item.get('quantity', 1),
+                    lens_options=None,
+                    frame_adjustments=None,
+                    special_instructions=None
+                )
+                db.session.add(order_item)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Order created successfully',
+            'order': order.to_dict(include_items=True)
+        }), 201
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error creating order: {str(e)}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({'error': 'Failed to create order'}), 500
 
 @orders_bp.route('/<int:order_id>', methods=['GET'])
 @jwt_required()

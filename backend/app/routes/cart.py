@@ -16,7 +16,7 @@ def get_cart():
         
         cart_items = CartItem.query.filter_by(user_id=current_user_id).all()
         
-        total_amount = sum(item.get_total_price() for item in cart_items)
+        total_amount = sum(item.total_price for item in cart_items)
         
         return jsonify({
             'cart_items': [item.to_dict() for item in cart_items],
@@ -37,10 +37,17 @@ def add_to_cart():
         current_user_id = get_jwt_identity()
         data = request.get_json()
         
+        current_app.logger.info(f"Add to cart request - User: {current_user_id}, Data: {data}")
+        
+        # Map variant_id to product_variant_id if provided
+        if 'variant_id' in data and 'product_variant_id' not in data:
+            data['product_variant_id'] = data['variant_id']
+        
         # Validate required fields
         required_fields = ['product_id', 'quantity']
         validation_errors = validate_required_fields(data, required_fields)
         if validation_errors:
+            current_app.logger.error(f"Validation errors: {validation_errors}")
             return jsonify({'errors': validation_errors}), 400
         
         product_id = data['product_id']
@@ -53,11 +60,13 @@ def add_to_cart():
         
         # Validate quantity
         if not isinstance(quantity, int) or quantity <= 0:
+            current_app.logger.error(f"Invalid quantity: {quantity}, type: {type(quantity)}")
             return jsonify({'error': 'Quantity must be a positive integer'}), 400
         
         # Check if product exists
         product = Product.query.filter_by(id=product_id, is_active=True).first()
         if not product:
+            current_app.logger.error(f"Product not found: {product_id}")
             return jsonify({'error': 'Product not found'}), 404
         
         # Check if product variant exists (if provided)
@@ -86,7 +95,10 @@ def add_to_cart():
                 variant = ProductVariant.query.get(product_variant_id)
                 available_stock = variant.stock_quantity
             
+            current_app.logger.info(f"Stock check - Product: {product_id}, Track inventory: {product.track_inventory}, Available: {available_stock}, Requested: {quantity}")
+            
             if available_stock < quantity:
+                current_app.logger.error(f"Insufficient stock - Available: {available_stock}, Requested: {quantity}")
                 return jsonify({
                     'error': 'Insufficient stock',
                     'available_stock': available_stock
@@ -100,9 +112,13 @@ def add_to_cart():
             prescription_id=prescription_id
         ).first()
         
+        current_app.logger.info(f"Existing item check - Found: {existing_item is not None}")
+        
         if existing_item:
             # Update existing item
             new_quantity = existing_item.quantity + quantity
+            
+            current_app.logger.info(f"Updating existing item - Current qty: {existing_item.quantity}, Adding: {quantity}, New total: {new_quantity}")
             
             # Check stock for new quantity
             if product.track_inventory:
@@ -111,32 +127,38 @@ def add_to_cart():
                     variant = ProductVariant.query.get(product_variant_id)
                     available_stock = variant.stock_quantity
                 
+                current_app.logger.info(f"Stock check - Available: {available_stock}, New total requested: {new_quantity}")
+                
                 if available_stock < new_quantity:
+                    current_app.logger.error(f"Insufficient stock - Available: {available_stock}, Already in cart: {existing_item.quantity}, Trying to add: {quantity}")
                     return jsonify({
-                        'error': 'Cannot add more items. Insufficient stock',
+                        'error': f'Cannot add {quantity} more. You have {existing_item.quantity} in cart. Only {available_stock} available in stock.',
                         'available_stock': available_stock,
                         'current_in_cart': existing_item.quantity
                     }), 400
             
             existing_item.quantity = new_quantity
-            existing_item.set_lens_options(lens_options)
-            existing_item.set_frame_adjustments(frame_adjustments)
+            existing_item.lens_options = json.dumps(lens_options) if lens_options else None
+            existing_item.frame_adjustments = json.dumps(frame_adjustments) if frame_adjustments else None
             existing_item.special_instructions = special_instructions
         else:
             # Create new cart item
+            current_app.logger.info(f"Creating new cart item")
             cart_item = CartItem(
                 user_id=current_user_id,
                 product_id=product_id,
                 product_variant_id=product_variant_id,
                 prescription_id=prescription_id,
                 quantity=quantity,
+                lens_options=json.dumps(lens_options) if lens_options else None,
+                frame_adjustments=json.dumps(frame_adjustments) if frame_adjustments else None,
                 special_instructions=special_instructions
             )
-            cart_item.set_lens_options(lens_options)
-            cart_item.set_frame_adjustments(frame_adjustments)
             db.session.add(cart_item)
         
+        current_app.logger.info(f"About to commit to database")
         db.session.commit()
+        current_app.logger.info(f"Successfully committed")
         
         return jsonify({'message': 'Item added to cart successfully'}), 201
     
@@ -154,19 +176,25 @@ def update_cart_item(cart_item_id):
         current_user_id = get_jwt_identity()
         data = request.get_json()
         
+        current_app.logger.info(f"Update cart item - User: {current_user_id}, Item ID: {cart_item_id}, Data: {data}")
+        
         cart_item = CartItem.query.filter_by(
             id=cart_item_id,
             user_id=current_user_id
         ).first()
         
         if not cart_item:
+            current_app.logger.error(f"Cart item not found - ID: {cart_item_id}, User: {current_user_id}")
             return jsonify({'error': 'Cart item not found'}), 404
         
         # Update quantity if provided
         if 'quantity' in data:
             quantity = data['quantity']
             
+            current_app.logger.info(f"Updating quantity to: {quantity}")
+            
             if not isinstance(quantity, int) or quantity <= 0:
+                current_app.logger.error(f"Invalid quantity: {quantity}, type: {type(quantity)}")
                 return jsonify({'error': 'Quantity must be a positive integer'}), 400
             
             # Check stock availability
@@ -175,9 +203,12 @@ def update_cart_item(cart_item_id):
                 if cart_item.product_variant_id:
                     available_stock = cart_item.product_variant.stock_quantity
                 
+                current_app.logger.info(f"Stock check for update - Available: {available_stock}, Requested: {quantity}")
+                
                 if available_stock < quantity:
+                    current_app.logger.error(f"Insufficient stock - Available: {available_stock}, Requested: {quantity}")
                     return jsonify({
-                        'error': 'Insufficient stock',
+                        'error': f'Only {available_stock} item(s) available in stock',
                         'available_stock': available_stock
                     }), 400
             
@@ -185,10 +216,10 @@ def update_cart_item(cart_item_id):
         
         # Update other fields if provided
         if 'lens_options' in data:
-            cart_item.set_lens_options(data['lens_options'])
+            cart_item.lens_options = json.dumps(data['lens_options']) if data['lens_options'] else None
         
         if 'frame_adjustments' in data:
-            cart_item.set_frame_adjustments(data['frame_adjustments'])
+            cart_item.frame_adjustments = json.dumps(data['frame_adjustments']) if data['frame_adjustments'] else None
         
         if 'special_instructions' in data:
             cart_item.special_instructions = data['special_instructions']

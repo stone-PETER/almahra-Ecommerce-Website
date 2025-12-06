@@ -7,6 +7,7 @@ import UserManagement from '../../components/admin/UserManagement/UserManagement
 import AnalyticsDashboard from '../../components/admin/AnalyticsDashboard/AnalyticsDashboard.jsx';
 import EmailLog from '../../components/admin/EmailLog/EmailLog.jsx';
 import ContactManagement from '../../components/admin/ContactManagement/ContactManagement.jsx';
+import AppointmentManagement from '../../components/admin/AppointmentManagement/AppointmentManagement.jsx';
 import './AdminPage.css';
 
 const AdminPage = () => {
@@ -23,6 +24,8 @@ const AdminPage = () => {
         return <OrderManagement />;
       case 'users':
         return <UserManagement />;
+      case 'appointments':
+        return <AppointmentManagement />;
       case 'analytics':
         return <AnalyticsDashboard />;
       case 'emails':
