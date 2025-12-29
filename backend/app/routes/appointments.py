@@ -3,6 +3,11 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import db, Appointment, AppointmentType, AppointmentStatus, User
 from app.utils.auth import admin_required
 from app.utils.validators import validate_json, validate_required_fields
+from app.services.email_service import (
+    send_appointment_confirmed_email,
+    send_appointment_completed_email,
+    send_appointment_cancelled_email
+)
 from datetime import datetime, date
 
 appointments_bp = Blueprint('appointments', __name__)
@@ -61,6 +66,21 @@ def create_appointment():
         
         db.session.add(appointment)
         db.session.commit()
+        
+        # Send appointment confirmation email
+        email_to_send = data.get('guest_email') if not user_id else None
+        if user_id:
+            # Get user email for authenticated users
+            user = User.query.get(user_id)
+            if user:
+                email_to_send = user.email
+        
+        if email_to_send:
+            try:
+                send_appointment_confirmed_email(email_to_send, appointment)
+                current_app.logger.info(f"Appointment confirmation email sent to {email_to_send}")
+            except Exception as e:
+                current_app.logger.error(f"Failed to send appointment confirmation email: {str(e)}")
         
         return jsonify({
             'message': 'Appointment booked successfully',
@@ -168,6 +188,20 @@ def cancel_appointment(appointment_id):
         appointment.status = AppointmentStatus.CANCELLED
         db.session.commit()
         
+        # Send appointment cancellation email
+        email_to_send = appointment.guest_email if appointment.guest_email else None
+        if appointment.user_id:
+            user = User.query.get(appointment.user_id)
+            if user:
+                email_to_send = user.email
+        
+        if email_to_send:
+            try:
+                send_appointment_cancelled_email(email_to_send, appointment)
+                current_app.logger.info(f"Appointment cancellation email sent to {email_to_send}")
+            except Exception as e:
+                current_app.logger.error(f"Failed to send appointment cancellation email: {str(e)}")
+        
         return jsonify({'message': 'Appointment cancelled successfully'}), 200
         
     except Exception as e:
@@ -216,6 +250,29 @@ def update_appointment_status(appointment_id):
             return jsonify({'error': f"Invalid status. Must be one of: {', '.join([s.value for s in AppointmentStatus])}"}), 400
         
         db.session.commit()
+        
+        # Send email notifications based on status change
+        email_to_send = None
+        if appointment.user_id:
+            user = User.query.get(appointment.user_id)
+            if user:
+                email_to_send = user.email
+        elif appointment.guest_email:
+            email_to_send = appointment.guest_email
+        
+        if email_to_send:
+            try:
+                if appointment.status == AppointmentStatus.COMPLETED:
+                    send_appointment_completed_email(email_to_send, appointment)
+                    current_app.logger.info(f"Appointment completed email sent to {email_to_send}")
+                elif appointment.status == AppointmentStatus.CANCELLED:
+                    send_appointment_cancelled_email(email_to_send, appointment)
+                    current_app.logger.info(f"Appointment cancelled email sent to {email_to_send}")
+                elif appointment.status == AppointmentStatus.CONFIRMED:
+                    send_appointment_confirmed_email(email_to_send, appointment)
+                    current_app.logger.info(f"Appointment confirmed email sent to {email_to_send}")
+            except Exception as e:
+                current_app.logger.error(f"Failed to send appointment status email: {str(e)}")
         
         return jsonify({
             'message': 'Appointment status updated successfully',

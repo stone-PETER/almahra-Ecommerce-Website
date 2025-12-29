@@ -112,6 +112,127 @@ The Almahra Team
     
     return send_email(email, subject, html_body, text_body)
 
+def send_order_out_for_delivery_email(email, order):
+    """Send order out for delivery notification"""
+    subject = f"Your Order is Out for Delivery - {order.order_number}"
+    
+    html_body = render_order_out_for_delivery_template(order)
+    text_body = f"""
+Great news! Your order is out for delivery today.
+
+Order Number: {order.order_number}
+Tracking Number: {order.tracking_number or 'N/A'}
+
+Your package should arrive later today.
+
+Best regards,
+The Almahra Team
+    """.strip()
+    
+    return send_email(email, subject, html_body, text_body)
+
+def send_order_delivered_email(email, order):
+    """Send order delivered notification"""
+    subject = f"Your Order Has Been Delivered - {order.order_number}"
+    
+    html_body = render_order_delivered_template(order)
+    text_body = f"""
+Your order has been delivered successfully!
+
+Order Number: {order.order_number}
+
+We hope you enjoy your purchase. If you have any questions or concerns, please don't hesitate to contact us.
+
+Best regards,
+The Almahra Team
+    """.strip()
+    
+    return send_email(email, subject, html_body, text_body)
+
+def send_order_cancelled_email(email, order):
+    """Send order cancellation notification"""
+    subject = f"Order Cancelled - {order.order_number}"
+    
+    html_body = render_order_cancelled_template(order)
+    text_body = f"""
+Your order has been cancelled.
+
+Order Number: {order.order_number}
+Total: ${order.total_amount:.2f}
+
+If you didn't request this cancellation or have any questions, please contact our support team.
+
+Best regards,
+The Almahra Team
+    """.strip()
+    
+    return send_email(email, subject, html_body, text_body)
+
+def send_appointment_confirmed_email(email, appointment):
+    """Send appointment confirmation email"""
+    subject = f"Appointment Confirmed - {appointment.appointment_type.value}"
+    
+    html_body = render_appointment_confirmed_template(appointment)
+    text_body = f"""
+Your appointment has been confirmed!
+
+Type: {appointment.appointment_type.value}
+Date: {appointment.appointment_date.strftime('%B %d, %Y')}
+Time: {appointment.appointment_time}
+
+{"Name: " + appointment.guest_name if appointment.guest_name else ""}
+{"Email: " + appointment.guest_email if appointment.guest_email else ""}
+{"Phone: " + appointment.guest_phone if appointment.guest_phone else ""}
+
+{("Notes: " + appointment.notes) if appointment.notes else ""}
+
+We look forward to seeing you!
+
+Best regards,
+The Almahra Team
+    """.strip()
+    
+    return send_email(email, subject, html_body, text_body)
+
+def send_appointment_completed_email(email, appointment):
+    """Send appointment completion notification"""
+    subject = f"Appointment Completed - {appointment.appointment_type.value}"
+    
+    html_body = render_appointment_completed_template(appointment)
+    text_body = f"""
+Thank you for your appointment!
+
+Type: {appointment.appointment_type.value}
+Date: {appointment.appointment_date.strftime('%B %d, %Y')}
+
+We hope you had a great experience. If you have any feedback or questions, please don't hesitate to reach out.
+
+Best regards,
+The Almahra Team
+    """.strip()
+    
+    return send_email(email, subject, html_body, text_body)
+
+def send_appointment_cancelled_email(email, appointment):
+    """Send appointment cancellation notification"""
+    subject = f"Appointment Cancelled - {appointment.appointment_type.value}"
+    
+    html_body = render_appointment_cancelled_template(appointment)
+    text_body = f"""
+Your appointment has been cancelled.
+
+Type: {appointment.appointment_type.value}
+Date: {appointment.appointment_date.strftime('%B %d, %Y')}
+Time: {appointment.appointment_time}
+
+If you'd like to reschedule or have any questions, please contact us.
+
+Best regards,
+The Almahra Team
+    """.strip()
+    
+    return send_email(email, subject, html_body, text_body)
+
 def send_welcome_email(email, first_name):
     """Send welcome email to new users"""
     subject = "Welcome to Almahra!"
@@ -168,6 +289,7 @@ def render_verification_email_template(verification_url):
         </div>
         <div class="footer">
             <p>Best regards,<br>The Almahra Team</p>
+            <p style="font-size: 12px; margin-top: 10px;">Contact us: support.almahra@gmail.com</p>
         </div>
     </body>
     </html>
@@ -210,6 +332,7 @@ def render_password_reset_email_template(reset_url):
         </div>
         <div class="footer">
             <p>Best regards,<br>The Almahra Team</p>
+            <p style="font-size: 12px; margin-top: 10px;">Contact us: support.almahra@gmail.com</p>
         </div>
     </body>
     </html>
@@ -259,6 +382,7 @@ def render_order_confirmation_template(order):
         </div>
         <div class="footer">
             <p>Best regards,<br>The Almahra Team</p>
+            <p style="font-size: 12px; margin-top: 10px;">Contact us: support.almahra@gmail.com</p>
         </div>
     </body>
     </html>
@@ -340,12 +464,265 @@ def render_welcome_email_template(first_name):
             <p>If you have any questions, our support team is here to help!</p>
         </div>
         <div class="footer">
-            <p>Best regards,<br>The Almahra Team</p>
+            <p>Best regards,<br>The Almahra Team</p>            <p style="font-size: 12px; margin-top: 10px;">Contact us: support.almahra@gmail.com</p>            <p style="font-size: 12px; margin-top: 10px;">Contact us: support.almahra@gmail.com</p>
         </div>
     </body>
     </html>
     """
     return render_template_string(template, first_name=first_name)
+
+def render_order_out_for_delivery_template(order):
+    """Render order out for delivery email HTML template"""
+    template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Out for Delivery</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #f59e0b; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .tracking { background-color: #e5e7eb; padding: 15px; border-radius: 6px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>📦 Out for Delivery!</h1>
+        </div>
+        <div class="content">
+            <p><strong>Order Number:</strong> {{ order.order_number }}</p>
+            
+            {% if order.tracking_number %}
+            <div class="tracking">
+                <p><strong>Tracking Number:</strong> {{ order.tracking_number }}</p>
+            </div>
+            {% endif %}
+            
+            <p>Great news! Your order is out for delivery and should arrive today.</p>
+            <p>Please ensure someone is available to receive the package.</p>
+        </div>
+        <div class="footer">
+            <p>Best regards,<br>The Almahra Team</p>
+            <p style="font-size: 12px; margin-top: 10px;">Contact us: support.almahra@gmail.com</p>
+        </div>
+    </body>
+    </html>
+    """
+    return render_template_string(template, order=order)
+
+def render_order_delivered_template(order):
+    """Render order delivered email HTML template"""
+    template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Order Delivered</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #10b981; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>✅ Delivered Successfully!</h1>
+        </div>
+        <div class="content">
+            <p><strong>Order Number:</strong> {{ order.order_number }}</p>
+            
+            <p>Your order has been delivered successfully!</p>
+            
+            <p>We hope you enjoy your purchase. If you have any questions or concerns about your order, please don't hesitate to contact us.</p>
+            
+            <p>Thank you for shopping with Almahra!</p>
+        </div>
+        <div class="footer">
+            <p>Best regards,<br>The Almahra Team</p>
+            <p style="font-size: 12px; margin-top: 10px;">Contact us: support.almahra@gmail.com</p>
+        </div>
+    </body>
+    </html>
+    """
+    return render_template_string(template, order=order)
+
+def render_order_cancelled_template(order):
+    """Render order cancelled email HTML template"""
+    template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Order Cancelled</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #ef4444; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .order-details { background-color: #fee2e2; padding: 15px; border-radius: 6px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Order Cancelled</h1>
+        </div>
+        <div class="content">
+            <p>Your order has been cancelled.</p>
+            
+            <div class="order-details">
+                <p><strong>Order Number:</strong> {{ order.order_number }}</p>
+                <p><strong>Total:</strong> ${{ "%.2f"|format(order.total_amount) }}</p>
+            </div>
+            
+            <p>If you didn't request this cancellation or have any questions, please contact our support team immediately.</p>
+            
+            <p>We hope to serve you again soon!</p>
+        </div>
+        <div class="footer">
+            <p>Best regards,<br>The Almahra Team</p>
+            <p style="font-size: 12px; margin-top: 10px;">Contact us: support.almahra@gmail.com</p>
+        </div>
+    </body>
+    </html>
+    """
+    return render_template_string(template, order=order)
+
+def render_appointment_confirmed_template(appointment):
+    """Render appointment confirmed email HTML template"""
+    template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Appointment Confirmed</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #3b82f6; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .appointment-details { background-color: #dbeafe; padding: 15px; border-radius: 6px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>📅 Appointment Confirmed!</h1>
+        </div>
+        <div class="content">
+            <p>Your appointment has been confirmed!</p>
+            
+            <div class="appointment-details">
+                <p><strong>Type:</strong> {{ appointment.appointment_type.value }}</p>
+                <p><strong>Date:</strong> {{ appointment.appointment_date.strftime('%B %d, %Y') }}</p>
+                <p><strong>Time:</strong> {{ appointment.appointment_time }}</p>
+                {% if appointment.guest_name %}
+                <p><strong>Name:</strong> {{ appointment.guest_name }}</p>
+                {% endif %}
+                {% if appointment.notes %}
+                <p><strong>Notes:</strong> {{ appointment.notes }}</p>
+                {% endif %}
+            </div>
+            
+            <p>We look forward to seeing you!</p>
+            
+            <p>If you need to reschedule or cancel, please contact us as soon as possible.</p>
+        </div>
+        <div class="footer">
+            <p>Best regards,<br>The Almahra Team</p>
+            <p style="font-size: 12px; margin-top: 10px;">Contact us: support.almahra@gmail.com</p>
+        </div>
+    </body>
+    </html>
+    """
+    return render_template_string(template, appointment=appointment)
+
+def render_appointment_completed_template(appointment):
+    """Render appointment completed email HTML template"""
+    template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Appointment Completed</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #059669; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>✓ Appointment Completed</h1>
+        </div>
+        <div class="content">
+            <p>Thank you for your appointment!</p>
+            
+            <p><strong>Type:</strong> {{ appointment.appointment_type.value }}</p>
+            <p><strong>Date:</strong> {{ appointment.appointment_date.strftime('%B %d, %Y') }}</p>
+            
+            <p>We hope you had a great experience with us. If you have any feedback or questions, please don't hesitate to reach out.</p>
+            
+            <p>We look forward to serving you again!</p>
+        </div>
+        <div class="footer">
+            <p>Best regards,<br>The Almahra Team</p>
+            <p style="font-size: 12px; margin-top: 10px;">Contact us: support.almahra@gmail.com</p>
+        </div>
+    </body>
+    </html>
+    """
+    return render_template_string(template, appointment=appointment)
+
+def render_appointment_cancelled_template(appointment):
+    """Render appointment cancelled email HTML template"""
+    template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Appointment Cancelled</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .appointment-details { background-color: #fee2e2; padding: 15px; border-radius: 6px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Appointment Cancelled</h1>
+        </div>
+        <div class="content">
+            <p>Your appointment has been cancelled.</p>
+            
+            <div class="appointment-details">
+                <p><strong>Type:</strong> {{ appointment.appointment_type.value }}</p>
+                <p><strong>Date:</strong> {{ appointment.appointment_date.strftime('%B %d, %Y') }}</p>
+                <p><strong>Time:</strong> {{ appointment.appointment_time }}</p>
+            </div>
+            
+            <p>If you'd like to reschedule or have any questions, please contact us.</p>
+            
+            <p>We hope to see you soon!</p>
+        </div>
+        <div class="footer">
+            <p>Best regards,<br>The Almahra Team</p>
+            <p style="font-size: 12px; margin-top: 10px;">Contact us: support.almahra@gmail.com</p>
+        </div>
+    </body>
+    </html>
+    """
+    return render_template_string(template, appointment=appointment)
 
 def strip_html_tags(html_text):
     """Strip HTML tags for plain text email"""

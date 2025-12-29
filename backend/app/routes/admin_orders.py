@@ -3,6 +3,13 @@ from flask_jwt_extended import jwt_required
 from app.models import db, Order, OrderStatus
 from app.utils.auth import admin_required
 from app.utils.validators import validate_pagination_params, validate_json
+from app.services.email_service import (
+    send_order_confirmation_email,
+    send_order_shipped_email,
+    send_order_out_for_delivery_email,
+    send_order_delivered_email,
+    send_order_cancelled_email
+)
 
 admin_orders_bp = Blueprint('admin_orders', __name__)
 
@@ -111,10 +118,32 @@ def update_order_status(order_id):
             status_upper = data['status'].upper()
             current_app.logger.info(f"Attempting to set status to: {status_upper}")
             new_status = OrderStatus(status_upper)
+            old_status = order.status
             order.status = new_status
             db.session.commit()
             
             current_app.logger.info(f"Order {order_id} status updated successfully to {new_status}")
+            
+            # Send email notification based on status change
+            if order.customer_email and new_status != old_status:
+                try:
+                    if new_status == OrderStatus.CONFIRMED:
+                        send_order_confirmation_email(order.customer_email, order)
+                        current_app.logger.info(f"Order confirmation email sent to {order.customer_email}")
+                    elif new_status == OrderStatus.SHIPPED:
+                        send_order_shipped_email(order.customer_email, order)
+                        current_app.logger.info(f"Order shipped email sent to {order.customer_email}")
+                    elif new_status == OrderStatus.OUT_FOR_DELIVERY:
+                        send_order_out_for_delivery_email(order.customer_email, order)
+                        current_app.logger.info(f"Order out for delivery email sent to {order.customer_email}")
+                    elif new_status == OrderStatus.DELIVERED:
+                        send_order_delivered_email(order.customer_email, order)
+                        current_app.logger.info(f"Order delivered email sent to {order.customer_email}")
+                    elif new_status == OrderStatus.CANCELLED:
+                        send_order_cancelled_email(order.customer_email, order)
+                        current_app.logger.info(f"Order cancelled email sent to {order.customer_email}")
+                except Exception as e:
+                    current_app.logger.error(f"Failed to send order status email: {str(e)}")
             
             return jsonify({
                 'message': 'Order status updated successfully',

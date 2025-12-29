@@ -3,7 +3,11 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import db, Order, OrderItem, CartItem, User, OrderStatus, PaymentStatus
 from app.utils.auth import get_current_user
 from app.utils.validators import validate_pagination_params, validate_json, validate_required_fields
-from app.services.email_service import send_order_shipped_email
+from app.services.email_service import (
+    send_order_confirmation_email,
+    send_order_cancelled_email
+)
+from datetime import datetime
 import json
 
 orders_bp = Blueprint('orders', __name__)
@@ -167,6 +171,13 @@ def create_order():
         
         db.session.commit()
         
+        # Send order confirmation email
+        try:
+            send_order_confirmation_email(user.email, order)
+            current_app.logger.info(f"Order confirmation email sent to {user.email}")
+        except Exception as e:
+            current_app.logger.error(f"Failed to send order confirmation email: {str(e)}")
+        
         return jsonify({
             'message': 'Order created successfully',
             'order': order.to_dict(include_items=True)
@@ -258,6 +269,13 @@ def cancel_order(order_id):
                         variant.stock_quantity += item.quantity
         
         db.session.commit()
+        
+        # Send order cancellation email
+        try:
+            send_order_cancelled_email(order.customer_email, order)
+            current_app.logger.info(f"Order cancellation email sent to {order.customer_email}")
+        except Exception as e:
+            current_app.logger.error(f"Failed to send order cancellation email: {str(e)}")
         
         return jsonify({
             'message': 'Order cancelled successfully',
