@@ -17,9 +17,11 @@ export const transformProduct = (product) => {
     discountPercentage: product.discount_percentage,
     stock: product.stock_quantity,
     stockQuantity: product.stock_quantity,
-    inStock: product.in_stock,
+    inStock:
+      product.in_stock ?? product.is_in_stock ?? product.stock_quantity > 0,
     isLowStock: product.is_low_stock,
-    brand: typeof product.brand === 'object' ? product.brand?.name : product.brand,
+    brand:
+      typeof product.brand === "object" ? product.brand?.name : product.brand,
     weight: product.weight,
     dimensions: product.dimensions,
     material: product.material,
@@ -38,12 +40,23 @@ export const transformProduct = (product) => {
     averageRating: product.average_rating,
     reviewCount: product.review_count,
     reviews: product.review_count,
-    images: product.primary_image ? [product.primary_image] : ['/images/placeholder.svg'],
-    primaryImage: product.primary_image,
+    images: product.primary_image
+      ? [product.primary_image]
+      : product.images?.length > 0
+        ? typeof product.images[0] === "string"
+          ? product.images
+          : product.images.map((img) => img.image_url || img.url || img)
+        : ["/images/placeholder.svg"],
+    primaryImage:
+      product.primary_image ||
+      product.images?.[0]?.image_url ||
+      product.images?.[0]?.url ||
+      product.images?.[0] ||
+      "/images/placeholder.svg",
     createdAt: product.created_at,
     publishedAt: product.published_at,
     variants: product.variants || [],
-    categories: product.categories || []
+    categories: product.categories || [],
   };
 };
 
@@ -66,7 +79,7 @@ export const transformUser = (user) => {
     email: user.email,
     firstName: user.first_name,
     lastName: user.last_name,
-    fullName: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+    fullName: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
     phone: user.phone,
     role: user.role,
     isVerified: user.is_verified,
@@ -74,7 +87,7 @@ export const transformUser = (user) => {
     dateOfBirth: user.date_of_birth,
     profileImage: user.profile_image,
     createdAt: user.created_at,
-    updatedAt: user.updated_at
+    updatedAt: user.updated_at,
   };
 };
 
@@ -109,7 +122,7 @@ export const transformOrder = (order) => {
     createdAt: order.created_at,
     updatedAt: order.updated_at,
     shippedAt: order.shipped_at,
-    deliveredAt: order.delivered_at
+    deliveredAt: order.delivered_at,
   };
 };
 
@@ -118,13 +131,17 @@ export const transformOrder = (order) => {
  */
 export const toSnakeCase = (obj) => {
   if (obj === null || obj === undefined) return obj;
-  if (typeof obj !== 'object') return obj;
+  if (typeof obj !== "object") return obj;
   if (Array.isArray(obj)) return obj.map(toSnakeCase);
 
   const snakeCaseObj = {};
   for (const [key, value] of Object.entries(obj)) {
-    const snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
-    snakeCaseObj[snakeKey] = typeof value === 'object' ? toSnakeCase(value) : value;
+    const snakeKey = key.replace(
+      /[A-Z]/g,
+      (letter) => `_${letter.toLowerCase()}`
+    );
+    snakeCaseObj[snakeKey] =
+      typeof value === "object" ? toSnakeCase(value) : value;
   }
   return snakeCaseObj;
 };

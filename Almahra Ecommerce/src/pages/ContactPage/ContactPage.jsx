@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import PhoneInput from '../../components/common/PhoneInput/PhoneInput';
-import emailService from '../../services/emailService';
-import './ContactPage.css';
+import React, { useState } from "react";
+import PhoneInput from "../../components/common/PhoneInput/PhoneInput";
+import api from "../../services/api";
+import "./ContactPage.css";
 
 const ContactPage = () => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    subject: '',
-    message: ''
+    name: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,15 +18,15 @@ const ContactPage = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
     // Clear error when user starts typing
     if (errors[name]) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        [name]: ''
+        [name]: "",
       }));
     }
   };
@@ -35,29 +35,30 @@ const ContactPage = () => {
     const newErrors = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = "Name is required";
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = "Please enter a valid email address";
     }
 
     if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+      newErrors.phone = "Phone number is required";
     } else if (!phoneValidation.isValid) {
-      newErrors.phone = phoneValidation.error || 'Please enter a valid phone number';
+      newErrors.phone =
+        phoneValidation.error || "Please enter a valid phone number";
     }
 
     if (!formData.subject.trim()) {
-      newErrors.subject = 'Subject is required';
+      newErrors.subject = "Subject is required";
     }
 
     if (!formData.message.trim()) {
-      newErrors.message = 'Message is required';
+      newErrors.message = "Message is required";
     } else if (formData.message.trim().length < 10) {
-      newErrors.message = 'Message must be at least 10 characters';
+      newErrors.message = "Message must be at least 10 characters";
     }
 
     setErrors(newErrors);
@@ -75,37 +76,29 @@ const ContactPage = () => {
     setSubmitStatus(null);
 
     try {
-      // Save query to localStorage
-      const queries = JSON.parse(localStorage.getItem('contactQueries') || '[]');
-      const newQuery = {
-        id: Date.now().toString(),
-        ...formData,
-        createdAt: new Date().toISOString(),
-        status: 'pending'
-      };
-      queries.push(newQuery);
-      localStorage.setItem('contactQueries', JSON.stringify(queries));
+      // Send to backend API
+      await api.post("/contact", {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        subject: formData.subject,
+        message: formData.message,
+      });
 
-      // Send email to customer
-      await emailService.sendContactConfirmation(formData);
-
-      // Send notification email to admin
-      await emailService.sendContactNotification(formData);
-
-      setSubmitStatus('success');
+      setSubmitStatus("success");
       setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        subject: '',
-        message: ''
+        name: "",
+        email: "",
+        phone: "",
+        subject: "",
+        message: "",
       });
 
       // Scroll to success message
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      console.error('Error submitting contact form:', error);
-      setSubmitStatus('error');
+      console.error("Error submitting contact form:", error);
+      setSubmitStatus("error");
     } finally {
       setIsSubmitting(false);
     }
@@ -128,7 +121,10 @@ const ContactPage = () => {
               <div className="info-icon">✉️</div>
               <h3>Email Us</h3>
               <p>Send us your queries anytime</p>
-              <a href="mailto:support@almahra-opticals.com" className="contact-link">
+              <a
+                href="mailto:support@almahra-opticals.com"
+                className="contact-link"
+              >
                 support@almahra-opticals.com
               </a>
             </div>
@@ -136,8 +132,12 @@ const ContactPage = () => {
             <div className="contact-info-card">
               <div className="info-icon">🕒</div>
               <h3>Working Hours</h3>
-              <p><strong>Sat - Thu:</strong> 9:30 AM - 11:00 PM</p>
-              <p><strong>Friday:</strong> 3:00 PM - 11:00 PM</p>
+              <p>
+                <strong>Sat - Thu:</strong> 9:30 AM - 11:00 PM
+              </p>
+              <p>
+                <strong>Friday:</strong> 3:00 PM - 11:00 PM
+              </p>
             </div>
           </div>
 
@@ -146,20 +146,26 @@ const ContactPage = () => {
             <div className="contact-form-card">
               <h2>Send Us a Message</h2>
               <p className="form-subtitle">
-                Fill out the form below and we'll get back to you as soon as possible
+                Fill out the form below and we'll get back to you as soon as
+                possible
               </p>
 
-              {submitStatus === 'success' && (
+              {submitStatus === "success" && (
                 <div className="alert alert-success">
                   <strong>✓ Message sent successfully!</strong>
-                  <p>Thank you for contacting us. We'll get back to you within 24 hours.</p>
+                  <p>
+                    Thank you for contacting us. We'll get back to you within 24
+                    hours.
+                  </p>
                 </div>
               )}
 
-              {submitStatus === 'error' && (
+              {submitStatus === "error" && (
                 <div className="alert alert-error">
                   <strong>✗ Error sending message</strong>
-                  <p>Please try again or contact us directly via phone or email.</p>
+                  <p>
+                    Please try again or contact us directly via phone or email.
+                  </p>
                 </div>
               )}
 
@@ -174,9 +180,11 @@ const ContactPage = () => {
                       value={formData.name}
                       onChange={handleChange}
                       placeholder="Enter your full name"
-                      className={errors.name ? 'input-error' : ''}
+                      className={errors.name ? "input-error" : ""}
                     />
-                    {errors.name && <span className="error-message">{errors.name}</span>}
+                    {errors.name && (
+                      <span className="error-message">{errors.name}</span>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -188,9 +196,11 @@ const ContactPage = () => {
                       value={formData.email}
                       onChange={handleChange}
                       placeholder="your.email@example.com"
-                      className={errors.email ? 'input-error' : ''}
+                      className={errors.email ? "input-error" : ""}
                     />
-                    {errors.email && <span className="error-message">{errors.email}</span>}
+                    {errors.email && (
+                      <span className="error-message">{errors.email}</span>
+                    )}
                   </div>
                 </div>
 
@@ -199,7 +209,9 @@ const ContactPage = () => {
                     <label htmlFor="phone">Phone Number *</label>
                     <PhoneInput
                       value={formData.phone}
-                      onChange={(value) => setFormData(prev => ({ ...prev, phone: value }))}
+                      onChange={(value) =>
+                        setFormData((prev) => ({ ...prev, phone: value }))
+                      }
                       onValidationChange={setPhoneValidation}
                       error={errors.phone}
                       placeholder="Enter phone number"
@@ -214,7 +226,7 @@ const ContactPage = () => {
                       name="subject"
                       value={formData.subject}
                       onChange={handleChange}
-                      className={errors.subject ? 'input-error' : ''}
+                      className={errors.subject ? "input-error" : ""}
                     >
                       <option value="">Select a subject</option>
                       <option value="Product Inquiry">Product Inquiry</option>
@@ -226,7 +238,9 @@ const ContactPage = () => {
                       <option value="Complaint">Complaint</option>
                       <option value="Other">Other</option>
                     </select>
-                    {errors.subject && <span className="error-message">{errors.subject}</span>}
+                    {errors.subject && (
+                      <span className="error-message">{errors.subject}</span>
+                    )}
                   </div>
                 </div>
 
@@ -239,13 +253,15 @@ const ContactPage = () => {
                     onChange={handleChange}
                     placeholder="Tell us more about your query..."
                     rows="6"
-                    className={errors.message ? 'input-error' : ''}
+                    className={errors.message ? "input-error" : ""}
                   />
-                  {errors.message && <span className="error-message">{errors.message}</span>}
+                  {errors.message && (
+                    <span className="error-message">{errors.message}</span>
+                  )}
                 </div>
 
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="submit-btn"
                   disabled={isSubmitting}
                 >
@@ -255,7 +271,7 @@ const ContactPage = () => {
                       Sending...
                     </>
                   ) : (
-                    'Send Message'
+                    "Send Message"
                   )}
                 </button>
               </form>

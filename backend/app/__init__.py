@@ -71,6 +71,7 @@ def create_app(config_class=Config):
     from app.routes.users import users_bp
     from app.routes.payments import payments_bp
     from app.routes.appointments import appointments_bp
+    from app.routes.contact import contact_bp
     # from app.routes.ar_integration import ar_bp  # Temporarily disabled due to CV2 import issues
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -82,6 +83,7 @@ def create_app(config_class=Config):
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(payments_bp, url_prefix='/api/payments')
     app.register_blueprint(appointments_bp, url_prefix='/api/appointments')
+    app.register_blueprint(contact_bp, url_prefix='/api/contact')
     # app.register_blueprint(ar_bp, url_prefix='/api/ar')  # Temporarily disabled
     
     # Health check endpoint
