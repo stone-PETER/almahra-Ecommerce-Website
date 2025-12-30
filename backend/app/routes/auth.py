@@ -13,6 +13,8 @@ from app.utils.auth import (
 from app.utils.validators import validate_json, validate_email, validate_required_fields
 from app.services.email_service import send_verification_email, send_password_reset_email
 from datetime import datetime, timedelta
+import traceback
+from sqlalchemy.exc import IntegrityError
 import re
 
 auth_bp = Blueprint('auth', __name__)
@@ -24,12 +26,20 @@ def register():
     """Register a new user"""
     data = request.get_json()
     
+    # Log incoming data for debugging
+    current_app.logger.info(f"Registration attempt - data keys: {list(data.keys())}")
+    current_app.logger.debug(f"Registration data: {data}")
+    
     # Validate required fields
     required_fields = ['email', 'password', 'first_name', 'last_name']
     validation_errors = validate_required_fields(data, required_fields)
     
     if validation_errors:
-        return jsonify(format_validation_errors(validation_errors)), 400
+        current_app.logger.warning(f"Validation errors: {validation_errors}")
+        return jsonify({
+            'error': 'Validation failed', 
+            'details': format_validation_errors(validation_errors)
+        }), 400
     
     # Validate email format
     if not validate_email(data['email']):
@@ -79,10 +89,17 @@ def register():
             'refresh_token': refresh_token
         }), 201
     
+    except IntegrityError as ie:
+        db.session.rollback()
+        current_app.logger.exception(f"Registration IntegrityError: {str(ie)}")
+        # Return details for common integrity issues
+        return jsonify({'error': 'Database integrity error', 'details': str(ie.orig) if hasattr(ie, 'orig') else str(ie)}), 500
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"Registration error: {str(e)}")
-        return jsonify({'error': 'Registration failed'}), 500
+        current_app.logger.exception(f"Registration error: {str(e)}")
+        # Log full traceback for debugging
+        current_app.logger.debug(traceback.format_exc())
+        return jsonify({'error': 'Registration failed', 'details': str(e)}), 500
 
 @auth_bp.route('/login', methods=['POST'])
 @validate_json

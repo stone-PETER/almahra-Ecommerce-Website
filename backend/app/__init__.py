@@ -96,6 +96,8 @@ def create_app(config_class=Config):
     
     @app.errorhandler(500)
     def internal_error(error):
-        return {'error': 'Internal server error'}, 500
+        app.logger.exception(f"Internal server error: {error}")
+        db.session.rollback()
+        return {'error': 'An unexpected error occurred'}, 500
     
     return app
