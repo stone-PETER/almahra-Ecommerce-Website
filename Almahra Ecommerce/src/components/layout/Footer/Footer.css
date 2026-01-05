@@ -1,0 +1,239 @@
+.footer {
+  background-color: #050835;
+  background-image: url('/images/Frame 80.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-blend-mode: overlay;
+  color: var(--white);
+  width: 100%;
+  position: relative;
+}
+
+.footer-content {
+  padding: var(--spacing-3xl) 0;
+  position: relative;
+  z-index: 1;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--spacing-4xl);
+  align-items: start;
+}
+
+/* Left Section - Links */
+.footer-links {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-3xl);
+}
+
+.footer-column-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--white);
+  margin-bottom: var(--spacing-lg);
+}
+
+.footer-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-list li {
+  margin-bottom: var(--spacing-md);
+}
+
+.footer-list a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: var(--font-size-base);
+  transition: color var(--transition-fast);
+}
+
+.footer-list a:hover {
+  color: var(--white);
+}
+
+/* Right Section - Company Info */
+.footer-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+  min-width: 400px;
+}
+
+.footer-logo {
+  margin-bottom: var(--spacing-md);
+}
+
+.footer-logo-img {
+  height: 80px;
+  width: auto;
+}
+
+.footer-locations {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: flex-start;
+}
+
+.location-icon {
+  flex-shrink: 0;
+  color: var(--white);
+}
+
+.location-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.location-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.location-item {
+  margin: 0;
+  font-size: var(--font-size-base);
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+}
+
+.footer-contact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.contact-icon {
+  flex-shrink: 0;
+  color: var(--white);
+}
+
+.contact-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.contact-link {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-size: var(--font-size-base);
+  transition: color var(--transition-fast);
+}
+
+.contact-link:hover {
+  color: var(--white);
+}
+
+.contact-emails {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.email-separator {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Footer Bottom */
+.footer-bottom {
+  background-color: #f5f5f5;
+  padding: var(--spacing-lg) 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-bottom-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.copyright {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.developer {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.developer a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: var(--font-weight-semibold);
+  transition: color var(--transition-fast);
+}
+
+.developer a:hover {
+  color: var(--primary-color);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-3xl);
+  }
+
+  .footer-info {
+    min-width: auto;
+  }
+
+  .footer-links {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-2xl);
+  }
+}
+
+@media (max-width: 768px) {
+  .footer-links {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xl);
+  }
+
+  .footer-bottom-content {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    text-align: center;
+  }
+
+  .contact-emails {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+
+  .email-separator {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-content {
+    padding: var(--spacing-2xl) 0;
+  }
+
+  .footer-column-title {
+    font-size: var(--font-size-lg);
+  }
+
+  .footer-logo-img {
+    height: 60px;
+  }
+}

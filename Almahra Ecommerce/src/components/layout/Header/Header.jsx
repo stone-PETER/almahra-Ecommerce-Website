@@ -64,7 +64,7 @@ const Header = () => {
             <div className="header__logo">
               <Link to="/" className="header__logo-link">
                 <img
-                  src="/images/logo.svg"
+                  src="/images/LOGO.svg"
                   alt="Almahra Opticals"
                   className="header__logo-img"
                 />
