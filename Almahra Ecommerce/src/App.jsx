@@ -13,6 +13,7 @@ import AdminLoginPage from "./pages/AdminLoginPage/AdminLoginPage.jsx";
 import UserProfilePage from "./pages/UserProfilePage/UserProfilePage.jsx";
 import LoginPage from "./pages/LoginPage/LoginPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage/ForgotPasswordPage.jsx";
+import ResetPasswordPage from "./pages/ResetPasswordPage/ResetPasswordPage.jsx";
 import AppointmentPage from "./pages/AppointmentPage/AppointmentPage.jsx";
 import ContactPage from "./pages/ContactPage/ContactPage.jsx";
 import AboutPage from "./pages/AboutPage/AboutPage.jsx";
@@ -42,6 +43,7 @@ function App() {
                     <Route path="/checkout" element={<CheckoutPage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/profile" element={<UserProfilePage />} />
                     <Route path="/appointment" element={<AppointmentPage />} />
                     <Route path="/contact" element={<ContactPage />} />

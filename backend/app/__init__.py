@@ -36,26 +36,26 @@ def create_app(config_class=Config):
     mail.init_app(app)
     jwt.init_app(app)
     
-    # JWT error handlers
+    # JWT error handlers - return 401 for proper HTTP semantics
     @jwt.invalid_token_loader
     def invalid_token_callback(error_string):
         app.logger.error(f"Invalid token: {error_string}")
-        return {'error': 'Invalid token', 'details': error_string}, 422
+        return {'error': 'Invalid token', 'details': error_string}, 401
     
     @jwt.unauthorized_loader
     def unauthorized_callback(error_string):
         app.logger.error(f"Unauthorized - missing token: {error_string}")
-        return {'error': 'Missing authorization token', 'details': error_string}, 422
+        return {'error': 'Missing authorization token', 'details': error_string}, 401
     
     @jwt.expired_token_loader
     def expired_token_callback(jwt_header, jwt_payload):
         app.logger.error(f"Expired token - Header: {jwt_header}, Payload: {jwt_payload}")
-        return {'error': 'Token has expired'}, 422
+        return {'error': 'Token has expired', 'code': 'token_expired'}, 401
     
     @jwt.revoked_token_loader
     def revoked_token_callback(jwt_header, jwt_payload):
         app.logger.error(f"Revoked token - Header: {jwt_header}, Payload: {jwt_payload}")
-        return {'error': 'Token has been revoked'}, 422
+        return {'error': 'Token has been revoked'}, 401
     
     # Import models so Flask-Migrate can detect them
     with app.app_context():

@@ -5,12 +5,17 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
+import socket
 
 mail = Mail()
 
 def send_email(to_email, subject, html_body, text_body=None):
-    """Send email using Flask-Mail"""
+    """Send email using Flask-Mail with timeout handling"""
     try:
+        # Set socket timeout to 30 seconds
+        default_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(30)
+        
         msg = Message(
             subject=subject,
             recipients=[to_email],
@@ -19,7 +24,21 @@ def send_email(to_email, subject, html_body, text_body=None):
             sender=current_app.config['MAIL_DEFAULT_SENDER']
         )
         mail.send(msg)
+        
+        # Restore default timeout
+        socket.setdefaulttimeout(default_timeout)
+        
+        current_app.logger.info(f"Email sent successfully to {to_email}")
         return True
+    except socket.timeout:
+        current_app.logger.error(f"Email timeout sending to {to_email}: SMTP server not responding")
+        return False
+    except smtplib.SMTPAuthenticationError as e:
+        current_app.logger.error(f"SMTP Authentication failed for {to_email}: {str(e)}")
+        return False
+    except smtplib.SMTPException as e:
+        current_app.logger.error(f"SMTP error sending to {to_email}: {str(e)}")
+        return False
     except Exception as e:
         current_app.logger.error(f"Failed to send email to {to_email}: {str(e)}")
         return False
@@ -268,7 +287,7 @@ def render_verification_email_template(verification_url):
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
             .header { background-color: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
             .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-            .button { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+            .button { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white !important; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
             .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
         </style>
     </head>
@@ -309,7 +328,7 @@ def render_password_reset_email_template(reset_url):
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
             .header { background-color: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
             .content { background-color: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-            .button { display: inline-block; padding: 12px 24px; background-color: #dc2626; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+            .button { display: inline-block; padding: 12px 24px; background-color: #dc2626; color: white !important; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
             .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
         </style>
     </head>
