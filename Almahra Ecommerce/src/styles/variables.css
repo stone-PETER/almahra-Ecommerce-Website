@@ -1,19 +1,19 @@
 /* ===== COLOR VARIABLES ===== */
 :root {
-  /* Primary Colors */
-  --primary-color: #2c3e50;
-  --primary-light: #34495e;
-  --primary-dark: #1a252f;
+  /* Primary Colors - Navy Blue from Al Mahra Design */
+  --primary-color: #1a1f3a;
+  --primary-light: #2d3561;
+  --primary-dark: #0f1425;
   
-  /* Secondary Colors */
-  --secondary-color: #3498db;
-  --secondary-light: #5dade2;
-  --secondary-dark: #2980b9;
+  /* Secondary Colors - Red Accent */
+  --secondary-color: #e63946;
+  --secondary-light: #ff4d5a;
+  --secondary-dark: #c41e2a;
   
   /* Accent Colors */
-  --accent-color: #e74c3c;
-  --accent-light: #ec7063;
-  --accent-dark: #c0392b;
+  --accent-color: #e63946;
+  --accent-light: #ff4d5a;
+  --accent-dark: #c41e2a;
   
   /* Neutral Colors */
   --white: #ffffff;
